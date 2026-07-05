@@ -32,9 +32,9 @@ export const classificationSchema = z.object({
     z.object({
       videoId: z.string(),
       spoiler: z.boolean(),
-      // Schéma tolérant : on accepte large pour ne pas faire échouer la
-      // validation sur un titre un peu long, le clamp final (300) est côté route.
-      safeTitle: z.string().max(2000).nullable(),
+      // PAS de .max() ici : Cerebras rejette les schémas JSON avec maxLength
+      // (wrong_api_format). Le clamp (300) est fait côté route.
+      safeTitle: z.string().nullable(),
     })
   ),
 });
