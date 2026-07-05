@@ -7,8 +7,13 @@ import { shouldVeil } from './lib/matcher.js';
 import { buildLocalSafeTitle } from './lib/safeTitle.js';
 import { extractCard, CARD_SELECTOR } from './lib/extract.js';
 import { decideReprocess, decideAgeUpdate } from './lib/reprocess.js';
+import { backendDecision } from './lib/backendDecision.js';
 
 const pack = TDF_2026;
+// Filet de sécurité si le service worker ne répond jamais (MV3 endormi, contexte
+// d'extension invalidé…) : au-delà de ce délai on abandonne silencieusement et le
+// voile générique Phase 1 reste en place (dégradation gracieuse).
+const BACKEND_TIMEOUT_MS = 5000;
 // Page /watch : le h1 principal spoile aussi. On le traite comme une pseudo-carte
 // (même logique shouldVeil + titre neutre + dblclic) via un sélecteur dédié. On ne
 // touche JAMAIS au lecteur (#movie_player) : notre voile ne cible que ytd-watch-metadata.
@@ -134,6 +139,7 @@ function fullReset(card) {
   delete card.dataset.spoilguardAge;
   delete card.dataset.spoilguardRevealed;
   delete card.dataset.spoilguardRevealedTitle;
+  delete card.dataset.spoilguardBackend;
 }
 
 function veil(card, info) {
@@ -180,6 +186,9 @@ function processCard(card) {
   if (shouldVeil(info, pack)) {
     veil(card, info);
     card.setAttribute('data-spoilguard', 'veiled');
+    // Le pré-filtre a voilé par prudence : on demande l'avis du backend (async). En
+    // attendant, et si le backend est indisponible, le voile générique reste (Phase 1).
+    requestBackendClassification(card, info);
   } else {
     card.setAttribute('data-spoilguard', 'clean');
   }
@@ -219,6 +228,9 @@ function reprocessCard(card) {
 // simple rafraîchissement du titre neutre (l'âge affiché a changé).
 function maybeUpdateVeiledAge(card, titleEl) {
   if (card.dataset.spoilguard !== 'veiled') return;
+  // Carte déjà retitrée par le backend (titre neutre riche) : ne pas la réécrire avec
+  // le titre générique local sur simple arrivée d'âge — le backend fait autorité.
+  if (card.dataset.spoilguardBackend === '1') return;
   const el = titleEl || findTitleEl(card);
   if (!el || el.dataset.spoilguardSafe == null) return; // pas (ou plus) notre voile
   const info = extractAny(card);
@@ -250,6 +262,97 @@ function maybeUpdateVeiledAge(card, titleEl) {
     card.dataset.spoilguardSig = safe;
     card.dataset.spoilguardAge = info.ageText ?? '';
   }
+}
+
+// --- Intégration backend (Phase 2b) ---------------------------------------------
+// Le content script et le service worker ne communiquent QUE par messages. On envoie
+// la carte voilée au SW ; à la réponse on délègue la décision à backendDecision (pure,
+// testée) et on n'applique ici que l'effet DOM. Aucune réponse (SW endormi, contexte
+// invalidé, timeout) → on ne fait rien, le voile générique Phase 1 subsiste.
+function requestBackendClassification(card, info) {
+  const videoId = info.videoId;
+  // La pseudo-carte /watch a un videoId sentinelle ('watch') sans clé de cache réelle
+  // et le contrat backend attend un vrai videoId → on la laisse sous voile générique.
+  if (!videoId || videoId === 'watch') return;
+  const rt = globalThis.chrome && chrome.runtime;
+  if (!rt || typeof rt.sendMessage !== 'function') return;
+
+  let settled = false;
+  const timer = setTimeout(() => {
+    // Filet MV3 : pas de réponse dans les temps → abandon silencieux.
+    settled = true;
+  }, BACKEND_TIMEOUT_MS);
+
+  try {
+    rt.sendMessage(
+      {
+        type: 'classify',
+        videos: [{ videoId, title: info.title, channel: info.channel }],
+      },
+      (resp) => {
+        // Toujours lire lastError pour éviter un warning console si pas de récepteur.
+        const err = rt.lastError;
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (err) return; // SW indisponible → fallback silencieux
+        const results = resp && Array.isArray(resp.results) ? resp.results : [];
+        const result =
+          results.find((r) => r && r.videoId === videoId) || results[0] || null;
+        applyBackendResult(card, result);
+      },
+    );
+  } catch {
+    // Contexte d'extension invalidé (rechargement) → silencieux.
+    settled = true;
+    clearTimeout(timer);
+  }
+}
+
+// Applique la décision backend à la carte, en relisant son état ACTUEL (elle a pu être
+// révélée, recyclée ou dé-voilée depuis l'envoi).
+function applyBackendResult(card, result) {
+  const titleEl = findTitleEl(card);
+  const veiled =
+    card.dataset.spoilguard === 'veiled' &&
+    titleEl != null &&
+    titleEl.dataset.spoilguardSafe != null;
+  const revealed = card.dataset.spoilguardRevealed === '1';
+  const currentVideoId = extractAny(card).videoId;
+  const decision = backendDecision({ result, veiled, revealed, videoId: currentVideoId });
+
+  if (decision === 'unveil') backendUnveil(card, titleEl);
+  else if (decision === 'retitle') backendRetitle(card, titleEl, result.safeTitle);
+  // 'noop' → rien : le voile générique Phase 1 reste (dégradation gracieuse).
+}
+
+// Faux positif confirmé par le backend → dé-voile complet et carte marquée clean
+// DÉFINITIVEMENT pour ce videoId : on la met dans `processed` et on aligne la
+// signature sur le titre restauré, si bien que le pré-filtre / decideReprocess
+// concluent 'ignore' et ne la re-voilent jamais en boucle (même mécanisme que la
+// branche clean de maybeUpdateVeiledAge).
+function backendUnveil(card, titleEl) {
+  const el = titleEl || findTitleEl(card);
+  stripVeil(card, el, true);
+  processed.add(card);
+  card.setAttribute('data-spoilguard', 'clean');
+  card.dataset.spoilguardSig = (findTitleEl(card)?.textContent || '').trim();
+  delete card.dataset.spoilguardAge;
+  delete card.dataset.spoilguardBackend;
+}
+
+// Vraie carte spoiler → on remplace le titre générique par le safeTitle du backend en
+// réutilisant exactement la mécanique du refresh d'âge (spoilguardSafe / aria / sig).
+// dataset.spoilguardOriginal (vrai titre) et le listener dblclick restent intacts : la
+// révélation continue de fonctionner.
+function backendRetitle(card, titleEl, safeTitle) {
+  const el = titleEl || findTitleEl(card);
+  if (!el || el.dataset.spoilguardSafe == null) return; // plus notre voile
+  el.dataset.spoilguardSafe = safeTitle;
+  el.setAttribute('aria-label', safeTitle);
+  el.textContent = safeTitle;
+  card.dataset.spoilguardSig = safeTitle;
+  card.dataset.spoilguardBackend = '1';
 }
 
 function scan(root) {
