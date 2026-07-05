@@ -319,12 +319,17 @@
 
         // Aucun titre n'est « révélable » côté web : un spoiler ne doit jamais l'être,
         // un non-spoiler n'a rien à révéler (son safeTitle EST déjà le titre original).
+        // Badge « protégé » réservé aux vraies vidéos spoiler (titre réécrit + miniature
+        // masquée) — l'afficher sur une carte qui montre sa vraie miniature serait trompeur.
+        var badgeHtml = v.spoiler
+          ? '<span class="badge protected">&#128737; ' + esc(t("protected")) + '</span>' +
+            '<span class="dot"></span>'
+          : '';
         li.innerHTML =
           thumbHtml +
           '<div class="body">' +
             '<div class="meta">' +
-              '<span class="badge protected">&#128737; ' + esc(t("protected")) + '</span>' +
-              '<span class="dot"></span>' +
+              badgeHtml +
               '<span>' + esc(v.channel) + '</span>' +
               '<span class="dot"></span>' +
               '<span>' + esc(relativeDate(v.publishedAt)) + '</span>' +
