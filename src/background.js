@@ -16,7 +16,7 @@
 //
 // Invariant : aucune erreur non catchée ne doit remonter (console propre).
 
-const DEFAULT_BACKEND = 'http://localhost:8787';
+const DEFAULT_BACKEND = 'http://o2nn42t9tx9tzfukiamwlrnl.137.74.43.81.sslip.io'; // prod VPS (dev : chrome.storage.local.backendUrl = http://localhost:8787)
 const COMPETITIONS = ['tdf-2026'];
 const DEBOUNCE_MS = 200;
 const BATCH_MAX = 30;
