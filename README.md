@@ -1,8 +1,11 @@
 # SpoilGuard
 
-Extension Chrome (Manifest V3) qui masque instantanément les spoilers de résultats sportifs sur YouTube (Tour de France 2026).
+Extension Chrome (Manifest V3) qui masque instantanément les spoilers de résultats sportifs sur YouTube — Tour de France, Wimbledon, Formule 1.
 
-Titres réécrits en « 🛡️ 🚴 Tour de France – vidéo (il y a 4 heures) », miniatures floutées, descriptions et chips « Résumé » IA masqués, `aria-label` neutralisés, titre principal des pages /watch couvert. Vérifié sur YouTube réel (juillet 2026, pendant le Tour).
+Deux couches : un **pré-filtre local** voile avant le premier paint (chaînes à risque + lexique), puis le **backend IA** (Hono + Cerebras gpt-oss-120b sur VPS, cache partagé par compétition) réécrit les titres proprement (« 🚴 Tour de France 2026 – Résumé étape 2 ») et dé-voile les faux positifs. Miniatures floutées, descriptions et chips « Résumé » IA masqués, `aria-label` neutralisés, titre principal des pages /watch couvert. Vérifié sur YouTube réel (juillet 2026, pendant le Tour).
+
+Composants : `src/` (extension) · `backend/` (API + companion web app mobile `/`) · `landing/` (page de vente).
+Prod : `https://o2nn42t9tx9tzfukiamwlrnl.137.74.43.81.sslip.io` (Coolify sur VPS OVH, deploy = push sur master + redeploy Coolify).
 
 ## Installation
 
