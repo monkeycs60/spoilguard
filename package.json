@@ -9,7 +9,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "build": "esbuild src/content.js --bundle --outfile=dist/content.js && esbuild src/background.js --bundle --outfile=dist/background.js && cp src/veil.css dist/veil.css",
+    "build": "esbuild src/content.js src/background.js src/options.js src/popup.js --bundle --outdir=dist && cp src/veil.css dist/veil.css && cp src/options.html dist/options.html && cp src/popup.html dist/popup.html",
     "watch": "esbuild src/content.js --bundle --outfile=dist/content.js --watch",
     "test": "vitest run"
   },

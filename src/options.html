@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SpoilGuard — Options</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f7f9;
+        --card: #ffffff;
+        --fg: #1a1c1f;
+        --muted: #61656c;
+        --border: #e2e5ea;
+        --accent: #2f6df6;
+        --accent-fg: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --card: #1d2026;
+          --fg: #e8eaed;
+          --muted: #9aa0a8;
+          --border: #2c313a;
+          --accent: #4c86ff;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        padding: 32px 16px;
+      }
+      main { max-width: 620px; margin: 0 auto; }
+      h1 { font-size: 22px; margin: 0 0 4px; }
+      .sub { color: var(--muted); margin: 0 0 24px; }
+      section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 18px;
+      }
+      h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 14px; }
+      .comp {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 0; border-top: 1px solid var(--border);
+      }
+      .comp:first-of-type { border-top: none; }
+      .comp .emoji { font-size: 22px; width: 28px; text-align: center; }
+      .comp .meta { flex: 1; min-width: 0; }
+      .comp .label { font-weight: 600; }
+      .comp .id { color: var(--muted); font-size: 12px; }
+      /* Interrupteur */
+      .switch { position: relative; width: 44px; height: 26px; flex: none; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider {
+        position: absolute; inset: 0; cursor: pointer;
+        background: var(--border); border-radius: 26px; transition: .15s;
+      }
+      .slider::before {
+        content: ""; position: absolute; height: 20px; width: 20px; left: 3px; top: 3px;
+        background: #fff; border-radius: 50%; transition: .15s;
+      }
+      input:checked + .slider { background: var(--accent); }
+      input:checked + .slider::before { transform: translateX(18px); }
+      input:disabled + .slider { opacity: .5; cursor: default; }
+      label.field { display: block; margin-bottom: 6px; color: var(--muted); font-size: 13px; }
+      input[type="url"] {
+        width: 100%; padding: 9px 11px; border-radius: 8px;
+        border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+      }
+      button {
+        font: inherit; font-weight: 600; cursor: pointer;
+        border: 1px solid var(--border); background: var(--card); color: var(--fg);
+        padding: 10px 16px; border-radius: 8px;
+      }
+      button.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+      .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+      #status { color: var(--muted); font-size: 13px; min-height: 18px; margin-top: 10px; }
+      details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>🛡️ SpoilGuard</h1>
+      <p class="sub">Choisissez les compétitions à protéger des spoilers.</p>
+
+      <section>
+        <h2>Compétitions</h2>
+        <div id="competitions"><p class="hint">Chargement…</p></div>
+      </section>
+
+      <section>
+        <h2>Révéler temporairement</h2>
+        <div class="row">
+          <button id="reveal" type="button">Révéler tout pendant 10 min</button>
+          <span id="pauseState" class="hint"></span>
+        </div>
+        <p class="hint">Les nouvelles vidéos ne seront plus masquées pendant 10 minutes. Rechargez YouTube pour tout révéler immédiatement.</p>
+      </section>
+
+      <section>
+        <details>
+          <summary>Avancé</summary>
+          <div style="margin-top: 14px;">
+            <label class="field" for="backendUrl">URL du service de classification</label>
+            <input id="backendUrl" type="url" placeholder="http://localhost:8787" spellcheck="false" />
+            <p class="hint">Laisser vide pour utiliser le serveur par défaut.</p>
+          </div>
+        </details>
+      </section>
+
+      <div id="status"></div>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>SpoilGuard</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff; --fg: #1a1c1f; --muted: #61656c;
+        --border: #e2e5ea; --accent: #2f6df6; --accent-fg: #fff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1d2026; --fg: #e8eaed; --muted: #9aa0a8;
+          --border: #2c313a; --accent: #4c86ff;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        width: 260px; margin: 0; padding: 16px;
+        font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg); color: var(--fg);
+      }
+      .head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+      .head .name { font-weight: 700; font-size: 15px; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .row + .row { margin-top: 12px; }
+      .desc { color: var(--muted); font-size: 12px; }
+      .switch { position: relative; width: 44px; height: 26px; flex: none; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider { position: absolute; inset: 0; cursor: pointer; background: var(--border); border-radius: 26px; transition: .15s; }
+      .slider::before { content: ""; position: absolute; height: 20px; width: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .15s; }
+      input:checked + .slider { background: var(--accent); }
+      input:checked + .slider::before { transform: translateX(18px); }
+      button {
+        width: 100%; font: inherit; font-weight: 600; cursor: pointer;
+        border: 1px solid var(--border); background: transparent; color: var(--fg);
+        padding: 9px 12px; border-radius: 8px; margin-top: 14px;
+      }
+      hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+      a { color: var(--accent); text-decoration: none; font-size: 13px; }
+      #pauseInfo { color: var(--muted); font-size: 12px; margin-top: 8px; min-height: 15px; }
+    </style>
+  </head>
+  <body>
+    <div class="head"><span>🛡️</span><span class="name">SpoilGuard</span></div>
+
+    <div class="row">
+      <div>
+        <div>Protection</div>
+        <div class="desc">Masquer les spoilers</div>
+      </div>
+      <label class="switch">
+        <input id="enabled" type="checkbox" />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <button id="pause" type="button">Pause 10 min</button>
+    <div id="pauseInfo"></div>
+
+    <hr />
+    <a id="options" href="#">Paramètres et compétitions →</a>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -17,7 +17,7 @@
 // Invariant : aucune erreur non catchée ne doit remonter (console propre).
 
 const DEFAULT_BACKEND = 'http://o2nn42t9tx9tzfukiamwlrnl.137.74.43.81.sslip.io'; // prod VPS (dev : chrome.storage.local.backendUrl = http://localhost:8787)
-const COMPETITIONS = ['tdf-2026'];
+const DEFAULT_COMPETITIONS = ['tdf-2026'];
 const DEBOUNCE_MS = 200;
 const BATCH_MAX = 30;
 const TIMEOUT_MS = 4000;
@@ -45,6 +45,19 @@ async function getBackendUrl() {
     return typeof backendUrl === 'string' && backendUrl ? backendUrl : DEFAULT_BACKEND;
   } catch {
     return DEFAULT_BACKEND;
+  }
+}
+
+// Compétitions actives choisies par l'utilisateur (page options). Envoyées au backend
+// pour cadrer la classification. Défaut prudent si storage vide/inaccessible.
+async function getCompetitions() {
+  try {
+    const { activeCompetitions } = await chrome.storage.local.get('activeCompetitions');
+    return Array.isArray(activeCompetitions) && activeCompetitions.length
+      ? activeCompetitions
+      : DEFAULT_COMPETITIONS;
+  } catch {
+    return DEFAULT_COMPETITIONS;
   }
 }
 
@@ -87,13 +100,14 @@ function chunk(arr, size) {
 // les vidéos non mises en cache (elles seront résolues en `unavailable`).
 async function classifyBatch(batch) {
   const base = (await getBackendUrl()).replace(/\/+$/, '');
+  const competitions = await getCompetitions();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(base + '/classify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ competitions: COMPETITIONS, videos: batch }),
+      body: JSON.stringify({ competitions, videos: batch }),
       signal: controller.signal,
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);

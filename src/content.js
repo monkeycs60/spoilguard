@@ -2,14 +2,26 @@
 // Toute la décision vit dans des libs testées : pack.js, matcher.js, safeTitle.js,
 // extract.js, reprocess.js. Ici on ne fait qu'observer le DOM et appliquer/révéler
 // le voile, synchrone, avant paint.
-import { TDF_2026 } from './lib/pack.js';
+import { PACKS, mergePacks } from './lib/pack.js';
 import { shouldVeil } from './lib/matcher.js';
 import { buildLocalSafeTitle } from './lib/safeTitle.js';
+import { pickVeilPack } from './lib/veilPack.js';
+import { veilingEnabled } from './lib/gate.js';
 import { extractCard, CARD_SELECTOR } from './lib/extract.js';
 import { decideReprocess, decideAgeUpdate } from './lib/reprocess.js';
 import { backendDecision } from './lib/backendDecision.js';
 
-const pack = TDF_2026;
+// État mutable des compétitions actives + interrupteurs (pause / on-off). Rechargé
+// depuis chrome.storage.local au démarrage et à chaque changement (sans reload).
+// merged = pack fusionné (décide du voilage), packs = membres (choix de l'emoji).
+const DEFAULT_COMPETITIONS = ['tdf-2026'];
+const state = {
+  competitions: DEFAULT_COMPETITIONS,
+  packs: DEFAULT_COMPETITIONS.map((id) => PACKS[id]).filter(Boolean),
+  merged: mergePacks(DEFAULT_COMPETITIONS),
+  enabled: true,
+  pauseUntil: 0,
+};
 // Filet de sécurité si le service worker ne répond jamais (MV3 endormi, contexte
 // d'extension invalidé…) : au-delà de ce délai on abandonne silencieusement et le
 // voile générique Phase 1 reste en place (dégradation gracieuse).
@@ -150,7 +162,7 @@ function veil(card, info) {
   if (titleEl.dataset.spoilguardOriginal == null) {
     titleEl.dataset.spoilguardOriginal = info.title;
   }
-  const safe = buildLocalSafeTitle(pack, info.ageText);
+  const safe = buildLocalSafeTitle(pickVeilPack(state.packs, info), info.ageText);
   // On mémorise le texte injecté : sert de signature pour distinguer NOTRE écriture
   // (à ignorer) d'un vrai changement de titre par YouTube (recyclage → re-traiter).
   titleEl.dataset.spoilguardSafe = safe;
@@ -182,8 +194,16 @@ function processCard(card) {
   }
   const info = extractAny(card);
   if (!info.videoId || !info.title) return; // carte pas encore peuplée, on repassera
+  // Pause (« révéler 10 min ») ou extension coupée : on ne voile RIEN et on ne marque
+  // pas la carte comme traitée, pour qu'elle soit re-voilée dès la reprise (prochain
+  // scan / mutation), sans reload.
+  if (!veilingEnabled(state)) {
+    card.setAttribute('data-spoilguard', 'clean');
+    card.dataset.spoilguardSig = (findTitleEl(card)?.textContent || '').trim();
+    return;
+  }
   processed.add(card);
-  if (shouldVeil(info, pack)) {
+  if (shouldVeil(info, state.merged)) {
     veil(card, info);
     card.setAttribute('data-spoilguard', 'veiled');
     // Le pré-filtre a voilé par prudence : on demande l'avis du backend (async). En
@@ -243,7 +263,7 @@ function maybeUpdateVeiledAge(card, titleEl) {
   const original = el.dataset.spoilguardOriginal ?? info.title;
   const stillVeil = shouldVeil(
     { channel: info.channel, ageText: info.ageText, title: original },
-    pack,
+    state.merged,
   );
   if (!stillVeil) {
     // Faux positif : la vidéo n'est pas récente → dé-voile complet, carte clean.
@@ -255,7 +275,7 @@ function maybeUpdateVeiledAge(card, titleEl) {
   } else {
     // Toujours à voiler mais l'âge affiché a changé → rafraîchir le titre neutre,
     // la signature anti-boucle et l'âge stocké (sinon rejeu à l'infini).
-    const safe = buildLocalSafeTitle(pack, info.ageText);
+    const safe = buildLocalSafeTitle(pickVeilPack(state.packs, info), info.ageText);
     el.dataset.spoilguardSafe = safe;
     el.setAttribute('aria-label', safe);
     el.textContent = safe;
@@ -361,6 +381,32 @@ function scan(root) {
   root.querySelectorAll?.(WATCH_SELECTOR).forEach(processCard);
 }
 
+// Ré-applique l'état courant (compétitions actives + pause/on-off) aux cartes déjà
+// vues, sans reload : on réinitialise chaque carte (hors cartes révélées par l'utilisateur,
+// dont on respecte le geste) puis on la re-traite. Sert quand l'utilisateur change ses
+// compétitions ou déclenche/lève une pause depuis les options/le popup.
+function rescanAll() {
+  document.querySelectorAll?.('[data-spoilguard]').forEach((card) => {
+    if (card.dataset.spoilguardRevealed === '1') return; // ne pas défaire une révélation
+    fullReset(card);
+    processCard(card);
+  });
+  if (document.body) scan(document.body);
+}
+
+// Recharge l'état depuis un snapshot de chrome.storage.local (défauts prudents).
+function applyStoredState(store) {
+  const comps =
+    Array.isArray(store.activeCompetitions) && store.activeCompetitions.length
+      ? store.activeCompetitions
+      : DEFAULT_COMPETITIONS;
+  state.competitions = comps;
+  state.packs = comps.map((id) => PACKS[id]).filter(Boolean);
+  state.merged = mergePacks(comps);
+  state.enabled = store.enabled !== false; // défaut true
+  state.pauseUntil = typeof store.pauseUntil === 'number' ? store.pauseUntil : 0;
+}
+
 // Remonte de la cible d'une mutation (souvent un nœud texte) à la carte qui la contient.
 function cardOf(target) {
   const el = target.nodeType === 1 ? target : target.parentElement;
@@ -389,4 +435,29 @@ new MutationObserver((muts) => {
 });
 
 if (document.body) scan(document.body);
-console.log('[SpoilGuard] actif —', pack.label);
+
+// Charge l'état persistant (compétitions actives, pause, on/off) puis re-applique.
+// Best-effort : hors contexte extension (tests, injection manuelle) → défauts en dur.
+const STORAGE_KEYS = ['activeCompetitions', 'enabled', 'pauseUntil'];
+try {
+  if (globalThis.chrome && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(STORAGE_KEYS, (store) => {
+      if (chrome.runtime && chrome.runtime.lastError) return;
+      applyStoredState(store || {});
+      rescanAll();
+    });
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local') return;
+      if (!STORAGE_KEYS.some((k) => k in changes)) return;
+      chrome.storage.local.get(STORAGE_KEYS, (store) => {
+        if (chrome.runtime && chrome.runtime.lastError) return;
+        applyStoredState(store || {});
+        rescanAll();
+      });
+    });
+  }
+} catch {
+  /* contexte d'extension indisponible → on reste sur les défauts */
+}
+
+console.log('[SpoilGuard] actif —', state.merged.label);

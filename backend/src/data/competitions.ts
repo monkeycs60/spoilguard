@@ -45,8 +45,51 @@ export const TDF_2026: Competition = {
   ],
 };
 
+export const WIMBLEDON_2026: Competition = {
+  id: 'wimbledon-2026',
+  label: 'Wimbledon',
+  emoji: '🎾',
+  active: true,
+  // Période indicative : fin juin → mi-juillet 2026 (tournoi ~2 semaines).
+  maxAgeHours: 72,
+  // Recopié dans src/lib/pack.js (fallback offline de l'extension) — même contenu.
+  channels: [
+    'bein sports france',
+    'wimbledon',
+    'eurosport france',
+    'eurosport',
+  ],
+  lexicon: [
+    'wimbledon', 'djokovic', 'alcaraz', 'sinner', 'swiatek', 'sabalenka',
+    'demi-finale', 'demi finale', 'quart de finale', 'quarts de finale',
+    '3ème tour', '3eme tour', 'tie-break', 'tie break', 'gazon',
+    'grand chelem', 'break', 'set decisif', 'set décisif',
+  ],
+};
+
+export const F1_2026: Competition = {
+  id: 'f1-2026',
+  label: 'Formule 1',
+  emoji: '🏎️',
+  active: true,
+  // Période indicative : saison mars → décembre 2026 (un GP ~tous les 1-2 weekends).
+  maxAgeHours: 72,
+  // Recopié dans src/lib/pack.js (fallback offline de l'extension) — même contenu.
+  channels: [
+    'formula 1',
+    'canal+ sport',
+    'canal+',
+  ],
+  lexicon: [
+    'f1', 'formule 1', 'formula 1', 'grand prix', 'gp de', 'gp d\'',
+    'verstappen', 'leclerc', 'hamilton', 'norris', 'piastri', 'russell',
+    'pole position', 'pole', 'qualifs', 'qualifications', 'sprint',
+    'podium', 'grille de départ', 'grille de depart',
+  ],
+};
+
 /** Catalogue complet (actives + inactives). */
-export const COMPETITIONS: Competition[] = [TDF_2026];
+export const COMPETITIONS: Competition[] = [TDF_2026, WIMBLEDON_2026, F1_2026];
 
 const BY_ID = new Map(COMPETITIONS.map((c) => [c.id, c]));
 
