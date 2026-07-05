@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0f0d" />
+  <title>SpoilGuard</title>
+  <style>
+    :root {
+      --bg: #0a0f0d;
+      --surface: #121a16;
+      --surface-2: #17211c;
+      --border: #22302a;
+      --text: #e8f0ec;
+      --muted: #8aa398;
+      --emerald: #10b981;
+      --emerald-dim: #0e6b52;
+      --danger: #f59e0b;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.4;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(10, 15, 13, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px calc(14px + env(safe-area-inset-top)) 16px;
+      padding-top: calc(14px + env(safe-area-inset-top));
+    }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; letter-spacing: -0.02em; }
+    .brand .shield { color: var(--emerald); font-size: 20px; }
+    .brand small { color: var(--muted); font-weight: 500; font-size: 12px; margin-left: auto; }
+    select {
+      margin-top: 12px; width: 100%; appearance: none;
+      background: var(--surface-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 11px 38px 11px 12px; font-size: 15px; font-weight: 600;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238aa398' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+      background-repeat: no-repeat; background-position: right 12px center;
+    }
+    main { padding: 16px; max-width: 640px; margin: 0 auto; }
+    .status { color: var(--muted); font-size: 14px; text-align: center; padding: 40px 16px; }
+    .status.error { color: var(--danger); }
+    .feed { display: flex; flex-direction: column; gap: 12px; list-style: none; padding: 0; margin: 0; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      transition: border-color 0.15s ease, transform 0.05s ease;
+    }
+    .card:active { transform: scale(0.995); }
+    .thumb {
+      position: relative; width: 100%; aspect-ratio: 16 / 9;
+      background: #000 center / cover no-repeat; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .thumb::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.45));
+    }
+    .play {
+      position: relative; z-index: 1; width: 54px; height: 54px; border-radius: 50%;
+      background: rgba(16, 185, 129, 0.92); display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .play svg { width: 22px; height: 22px; margin-left: 3px; fill: #06120d; }
+    .body { padding: 12px 14px 14px; }
+    .meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px;
+    }
+    .badge.protected { color: var(--emerald); background: rgba(16,185,129,0.12); }
+    .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+    .title { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+    .reveal {
+      margin-top: 8px; background: none; border: 1px solid var(--border);
+      color: var(--muted); font-size: 12px; padding: 5px 10px; border-radius: 8px;
+      cursor: pointer; font-family: inherit;
+    }
+    .reveal:active { background: var(--surface-2); }
+    .original { margin-top: 8px; font-size: 13px; color: var(--muted); font-style: italic; display: none; }
+
+    /* Overlay lecteur */
+    .overlay {
+      position: fixed; inset: 0; z-index: 100; display: none;
+      background: rgba(0,0,0,0.92); backdrop-filter: blur(4px);
+      flex-direction: column; padding: env(safe-area-inset-top) 0 0 0;
+    }
+    .overlay.open { display: flex; }
+    .overlay-bar { display: flex; justify-content: flex-end; padding: 10px 14px; }
+    .close {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      width: 40px; height: 40px; border-radius: 50%; font-size: 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .player {
+      flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 12px 24px;
+    }
+    .player-frame {
+      width: 100%; max-width: 900px; aspect-ratio: 16 / 9;
+      border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--border);
+    }
+    .player-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+    footer { text-align: center; color: var(--muted); font-size: 12px; padding: 24px 16px 40px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="shield">&#128737;</span>
+      <span>SpoilGuard</span>
+      <small>feed sans spoiler</small>
+    </div>
+    <select id="competition" aria-label="Choisir une compétition"></select>
+  </header>
+
+  <main>
+    <div id="status" class="status">Chargement…</div>
+    <ul id="feed" class="feed"></ul>
+  </main>
+
+  <footer>Les titres révélateurs sont masqués. Lancez la vidéo l'esprit tranquille.</footer>
+
+  <div id="overlay" class="overlay" role="dialog" aria-modal="true">
+    <div class="overlay-bar">
+      <button id="close" class="close" aria-label="Fermer">&times;</button>
+    </div>
+    <div class="player">
+      <div class="player-frame"><div id="player-mount"></div></div>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+    var feedEl = document.getElementById("feed");
+    var statusEl = document.getElementById("status");
+    var selectEl = document.getElementById("competition");
+    var overlayEl = document.getElementById("overlay");
+    var mountEl = document.getElementById("player-mount");
+
+    function setStatus(msg, isError) {
+      statusEl.textContent = msg || "";
+      statusEl.style.display = msg ? "block" : "none";
+      statusEl.className = "status" + (isError ? " error" : "");
+    }
+
+    // Date relative en français (sans dépendance).
+    function relativeDate(iso) {
+      if (!iso) return "";
+      var then = Date.parse(iso);
+      if (isNaN(then)) return "";
+      var s = Math.max(0, Math.floor((Date.now() - then) / 1000));
+      if (s < 60) return "à l'instant";
+      var m = Math.floor(s / 60);
+      if (m < 60) return "il y a " + m + " min";
+      var h = Math.floor(m / 60);
+      if (h < 24) return "il y a " + h + " h";
+      var d = Math.floor(h / 24);
+      if (d < 7) return "il y a " + d + (d > 1 ? " jours" : " jour");
+      var w = Math.floor(d / 7);
+      if (w < 5) return "il y a " + w + (w > 1 ? " semaines" : " semaine");
+      var mo = Math.floor(d / 30);
+      if (mo < 12) return "il y a " + mo + " mois";
+      return "il y a " + Math.floor(d / 365) + " an(s)";
+    }
+
+    function esc(s) {
+      var div = document.createElement("div");
+      div.textContent = s == null ? "" : String(s);
+      return div.innerHTML;
+    }
+
+    function openPlayer(videoId) {
+      // youtube-nocookie + modestbranding : le titre YouTube n'apparaît jamais.
+      var iframe = document.createElement("iframe");
+      iframe.src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(videoId) +
+        "?autoplay=1&rel=0&modestbranding=1&playsinline=1";
+      iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
+      iframe.allowFullscreen = true;
+      mountEl.innerHTML = "";
+      mountEl.appendChild(iframe);
+      overlayEl.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+    function closePlayer() {
+      overlayEl.classList.remove("open");
+      mountEl.innerHTML = ""; // stoppe la lecture
+      document.body.style.overflow = "";
+    }
+    document.getElementById("close").addEventListener("click", closePlayer);
+    overlayEl.addEventListener("click", function (e) { if (e.target === overlayEl) closePlayer(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closePlayer(); });
+
+    function renderVideos(videos) {
+      feedEl.innerHTML = "";
+      if (!videos || videos.length === 0) {
+        setStatus("Aucune vidéo récente pour cette compétition.", false);
+        return;
+      }
+      setStatus("", false);
+      videos.forEach(function (v) {
+        var li = document.createElement("li");
+        li.className = "card";
+
+        // Vignette YouTube (image publique, pas de titre).
+        var thumbUrl = "https://i.ytimg.com/vi/" + encodeURIComponent(v.videoId) + "/hqdefault.jpg";
+        var hasOriginal = Object.prototype.hasOwnProperty.call(v, "originalTitle");
+
+        li.innerHTML =
+          '<div class="thumb" style="background-image:url(\'' + thumbUrl + '\')">' +
+            '<div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>' +
+          '</div>' +
+          '<div class="body">' +
+            '<div class="meta">' +
+              '<span class="badge protected">&#128737; protégé</span>' +
+              '<span class="dot"></span>' +
+              '<span>' + esc(v.channel) + '</span>' +
+              '<span class="dot"></span>' +
+              '<span>' + esc(relativeDate(v.publishedAt)) + '</span>' +
+            '</div>' +
+            '<p class="title">' + esc(v.safeTitle) + '</p>' +
+            (hasOriginal
+              ? '<button class="reveal" type="button">Révéler le titre</button>' +
+                '<p class="original">' + esc(v.originalTitle) + '</p>'
+              : '') +
+          '</div>';
+
+        li.querySelector(".thumb").addEventListener("click", function () { openPlayer(v.videoId); });
+
+        if (hasOriginal) {
+          var btn = li.querySelector(".reveal");
+          var orig = li.querySelector(".original");
+          btn.addEventListener("click", function () {
+            var shown = orig.style.display === "block";
+            orig.style.display = shown ? "none" : "block";
+            btn.textContent = shown ? "Révéler le titre" : "Masquer le titre";
+          });
+        }
+        feedEl.appendChild(li);
+      });
+    }
+
+    function loadFeed(id) {
+      setStatus("Chargement du feed…", false);
+      feedEl.innerHTML = "";
+      fetch("/feed/" + encodeURIComponent(id))
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then(function (data) { renderVideos(data.videos || []); })
+        .catch(function (e) { setStatus("Impossible de charger le feed (" + e.message + ").", true); });
+    }
+
+    function init() {
+      fetch("/competitions")
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var comps = (data.competitions || []).filter(function (c) { return c.active; });
+          if (comps.length === 0) { setStatus("Aucune compétition active.", true); return; }
+          comps.forEach(function (c) {
+            var opt = document.createElement("option");
+            opt.value = c.id;
+            opt.textContent = (c.emoji ? c.emoji + " " : "") + c.label;
+            selectEl.appendChild(opt);
+          });
+          selectEl.addEventListener("change", function () { loadFeed(selectEl.value); });
+          loadFeed(comps[0].id);
+        })
+        .catch(function (e) { setStatus("Backend indisponible (" + e.message + ").", true); });
+    }
+
+    init();
+  </script>
+</body>
+</html>

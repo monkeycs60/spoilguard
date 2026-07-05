@@ -3,15 +3,22 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { createClassifyRoute, type ClassifyRouteDeps } from './routes/classify';
 import { createCompetitionsRoute } from './routes/competitions';
-import type { ClassifyFn } from './lib/classifier';
+import { createFeedRoute, type FeedRouteDeps } from './routes/feed';
+import { TTLCache } from './lib/cache';
+import { createRateLimiter } from './lib/rateLimit';
+import type { Classification, ClassifyFn } from './lib/classifier';
 
 export type AppDeps = {
   classify: ClassifyFn;
   cache?: ClassifyRouteDeps['cache'];
   rateLimiter?: ClassifyRouteDeps['rateLimiter'];
   rateLimit?: ClassifyRouteDeps['rateLimit'];
+  /** RSS injectable (mock en test) — sinon client RSS réel. */
+  fetchChannelFeed?: FeedRouteDeps['fetchChannelFeed'];
+  feedCache?: FeedRouteDeps['feedCache'];
 };
 
 export function createApp(deps: AppDeps) {
@@ -49,8 +56,31 @@ export function createApp(deps: AppDeps) {
 
   app.get('/health', (c) => c.json({ ok: true, uptime: process.uptime() }));
 
-  app.route('/classify', createClassifyRoute(deps));
+  // Cache de classification + rate limiter PARTAGÉS entre /classify et /feed :
+  // une vidéo classée par un flux profite au batch de l'extension, et vice versa.
+  const classifyCache = deps.cache ?? new TTLCache<Classification>();
+  const rateLimiter =
+    deps.rateLimiter ?? createRateLimiter(deps.rateLimit ?? { limit: 60, windowMs: 60_000 });
+
+  app.route('/classify', createClassifyRoute({ ...deps, cache: classifyCache, rateLimiter }));
   app.route('/competitions', createCompetitionsRoute());
+  app.route(
+    '/feed',
+    createFeedRoute({
+      classify: deps.classify,
+      cache: classifyCache,
+      rateLimiter,
+      fetchChannelFeed: deps.fetchChannelFeed,
+      feedCache: deps.feedCache,
+    })
+  );
+
+  // Companion web app (Phase 3) : servie en statique sur / depuis backend/public/.
+  // Enregistré APRÈS les routes API : leurs handlers répondent avant ce middleware
+  // (Hono compose les handlers dans l'ordre d'enregistrement).
+  app.use('/*', serveStatic({ root: './public', index: 'index.html' }));
+  // Fallback SPA : tout chemin non résolu retombe sur index.html.
+  app.get('*', serveStatic({ path: './public/index.html' }));
 
   return app;
 }
