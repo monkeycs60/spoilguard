@@ -13,6 +13,8 @@ export type Classification = {
   videoId: string;
   spoiler: boolean;
   safeTitle: string | null;
+  /** true si issu du repli (LLM indisponible) — ne doit PAS être mis en cache. */
+  fallback?: boolean;
 };
 
 /** Signature du classifieur consommé par la route /classify. */
@@ -39,7 +41,7 @@ export type ClassificationObject = z.infer<typeof classificationSchema>;
 
 /** Résultat de repli : en cas de doute, on voile (prudence). */
 export function fallbackResult(video: Video): Classification {
-  return { videoId: video.videoId, spoiler: true, safeTitle: null };
+  return { videoId: video.videoId, spoiler: true, safeTitle: null, fallback: true };
 }
 
 /** Construit le prompt de classification pour un batch de vidéos. */

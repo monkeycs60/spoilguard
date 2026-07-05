@@ -28,7 +28,7 @@ describe('buildPrompt', () => {
 
 describe('fallbackResult', () => {
   it('voile par défaut', () => {
-    expect(fallbackResult(videos[0])).toEqual({ videoId: 'v1', spoiler: true, safeTitle: null });
+    expect(fallbackResult(videos[0])).toEqual({ videoId: 'v1', spoiler: true, safeTitle: null, fallback: true });
   });
 });
 
@@ -79,8 +79,8 @@ describe('createClassifier', () => {
     const out = await classify(['tdf-2026'], videos);
     expect(calls).toBe(2); // 1 appel + 1 retry
     expect(out).toEqual([
-      { videoId: 'v1', spoiler: true, safeTitle: null },
-      { videoId: 'v2', spoiler: true, safeTitle: null },
+      { videoId: 'v1', spoiler: true, safeTitle: null, fallback: true },
+      { videoId: 'v2', spoiler: true, safeTitle: null, fallback: true },
     ]);
   });
 
@@ -95,6 +95,7 @@ describe('createClassifier', () => {
       videoId: 'v2',
       spoiler: true,
       safeTitle: null,
+      fallback: true,
     });
   });
 });

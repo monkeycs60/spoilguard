@@ -90,7 +90,8 @@ export function createClassifyRoute(deps: ClassifyRouteDeps) {
     if (misses.length > 0) {
       const fresh = await deps.classify(competitions, misses);
       for (const r of fresh) {
-        cache.set(r.videoId, r);
+        // Un repli (LLM indisponible) ne doit pas empoisonner le cache 24h.
+        if (!r.fallback) cache.set(r.videoId, r);
         hits.set(r.videoId, r);
       }
     }

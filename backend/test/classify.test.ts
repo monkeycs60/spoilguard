@@ -66,6 +66,24 @@ describe('POST /classify — cache', () => {
     // Toujours 1 appel : le 2e a été servi par le cache.
     expect(classify).toHaveBeenCalledTimes(1);
   });
+
+  it('ne met PAS en cache un résultat de fallback (LLM indisponible)', async () => {
+    const classify = vi.fn<ClassifyFn>(async (_c, videos) => videos.map(fallbackResult));
+    const cache = new TTLCache<Classification>();
+    const app = createApp({ classify, cache });
+
+    const body = { competitions: ['tdf-2026'], videos: [{ videoId: 'v1', title: 'Étape 3' }] };
+
+    const res1 = await post(app, body);
+    expect(res1.status).toBe(200);
+    expect(classify).toHaveBeenCalledTimes(1);
+
+    // Le fallback ne doit pas empoisonner le cache : le 2e appel repasse par le LLM.
+    const res2 = await post(app, body);
+    expect(res2.status).toBe(200);
+    expect(res2.headers.get('X-Cache-Misses')).toBe('1');
+    expect(classify).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('POST /classify — fallback + safeTitle générique', () => {
