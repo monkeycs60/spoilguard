@@ -11,7 +11,7 @@
   "host_permissions": [
     "http://localhost:8787/*",
     "http://127.0.0.1:8787/*",
-    "http://o2nn42t9tx9tzfukiamwlrnl.137.74.43.81.sslip.io/*"
+    "https://o2nn42t9tx9tzfukiamwlrnl.137.74.43.81.sslip.io/*"
   ],
   "content_scripts": [
     {

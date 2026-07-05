@@ -16,7 +16,7 @@
 //
 // Invariant : aucune erreur non catchée ne doit remonter (console propre).
 
-const DEFAULT_BACKEND = 'http://o2nn42t9tx9tzfukiamwlrnl.137.74.43.81.sslip.io'; // prod VPS (dev : chrome.storage.local.backendUrl = http://localhost:8787)
+const DEFAULT_BACKEND = 'https://o2nn42t9tx9tzfukiamwlrnl.137.74.43.81.sslip.io'; // prod VPS (dev : chrome.storage.local.backendUrl = http://localhost:8787)
 const DEFAULT_COMPETITIONS = ['tdf-2026'];
 const DEBOUNCE_MS = 200;
 const BATCH_MAX = 30;
@@ -61,14 +61,23 @@ async function getCompetitions() {
   }
 }
 
+// Clé de cache scopée par compétitions actives (triées) + videoId. La classification
+// DÉPEND des compétitions demandées : une même vidéo peut être « sans spoiler » pour
+// une compétition et spoiler pour une autre. Scoper la clé empêche toute contamination
+// inter-compétitions (C1) et invalide naturellement le cache au changement de
+// compétitions actives (les anciennes clés ne sont plus consultées).
+function cacheKey(competitions, id) {
+  return CACHE_PREFIX + [...competitions].sort().join('+') + '|' + id;
+}
+
 // --- Cache chrome.storage.session (best-effort : toute erreur → cache vide/silencieux) ---
-async function getCached(ids) {
+async function getCached(competitions, ids) {
   try {
-    const keys = ids.map((id) => CACHE_PREFIX + id);
+    const keys = ids.map((id) => cacheKey(competitions, id));
     const obj = await chrome.storage.session.get(keys);
     const out = {};
     for (const id of ids) {
-      const v = obj[CACHE_PREFIX + id];
+      const v = obj[cacheKey(competitions, id)];
       if (v) out[id] = v;
     }
     return out;
@@ -77,11 +86,11 @@ async function getCached(ids) {
   }
 }
 
-async function setCached(results) {
+async function setCached(competitions, results) {
   try {
     const obj = {};
     for (const r of results) {
-      if (r && r.videoId) obj[CACHE_PREFIX + r.videoId] = r;
+      if (r && r.videoId) obj[cacheKey(competitions, r.videoId)] = r;
     }
     if (Object.keys(obj).length) await chrome.storage.session.set(obj);
   } catch {
@@ -98,9 +107,8 @@ function chunk(arr, size) {
 // Appelle le backend pour un lot ≤ BATCH_MAX. Met en cache les résultats en cas de
 // succès, met à jour le circuit breaker. Ne jette JAMAIS : un échec laisse simplement
 // les vidéos non mises en cache (elles seront résolues en `unavailable`).
-async function classifyBatch(batch) {
+async function classifyBatch(batch, competitions) {
   const base = (await getBackendUrl()).replace(/\/+$/, '');
-  const competitions = await getCompetitions();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -113,7 +121,7 @@ async function classifyBatch(batch) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const results = Array.isArray(data && data.results) ? data.results : [];
-    await setCached(results.filter((r) => r && r.videoId));
+    await setCached(competitions, results.filter((r) => r && r.videoId));
     // Succès → on referme le circuit.
     consecutiveFailures = 0;
     circuitOpenUntil = 0;
@@ -131,7 +139,7 @@ async function classifyBatch(batch) {
 // Résout un waiter à partir du cache : chaque videoId connu → son résultat, sinon
 // `unavailable` (backend down, timeout, ou circuit ouvert).
 async function resolveWaiter(w) {
-  const cached = await getCached(w.ids);
+  const cached = await getCached(w.competitions, w.ids);
   const results = w.ids.map(
     (id) => cached[id] || { videoId: id, unavailable: true },
   );
@@ -147,8 +155,11 @@ async function flush() {
 
   try {
     if (batchVideos.length && !circuitOpen()) {
+      // Compétitions actives lues une seule fois : sert de scope de cache commun à
+      // l'écriture (classifyBatch) et à la lecture (resolveWaiter) de ce cycle.
+      const competitions = await getCompetitions();
       for (const part of chunk(batchVideos, BATCH_MAX)) {
-        await classifyBatch(part);
+        await classifyBatch(part, competitions);
       }
     }
   } catch {
@@ -184,7 +195,9 @@ async function handleClassify(rawVideos) {
 
   if (ids.length === 0) return { results: [] };
 
-  const cached = await getCached(ids);
+  // Scope de cache = compétitions actives (lues une fois par requête).
+  const competitions = await getCompetitions();
+  const cached = await getCached(competitions, ids);
   const missing = videos.filter((v) => !cached[v.videoId]);
 
   // Tout est déjà en cache → réponse immédiate, aucun appel réseau.
@@ -210,7 +223,7 @@ async function handleClassify(rawVideos) {
     });
   }
   const promise = new Promise((resolve) => {
-    waiters.push({ ids, resolve });
+    waiters.push({ ids, competitions, resolve });
   });
   scheduleFlush();
   return promise;

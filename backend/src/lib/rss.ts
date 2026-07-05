@@ -49,6 +49,15 @@ export const CHANNEL_ID_MAP: Record<string, string> = {
   'cycling pro net': 'UCAKkRVGHv4uHTM5S2jSzLDQ', // auteur RSS: « Cycling Pro Net »
   'lanterne rouge': 'UC77UtoyivVHkpApL0wGfH5w', // auteur RSS: « Lanterne Rouge »
   'velon cc': 'UCcbBlBEtCZ2lX7bodgi02Xg', // auteur RSS: « Velon »
+  // Ajoutés le 2026-07-05 : channelId extrait de https://www.youtube.com/@handle
+  // (User-Agent Googlebot) puis VALIDÉ via feeds/videos.xml?channel_id=… (15 <entry>,
+  // <name> conforme). Chaînes Wimbledon/F1.
+  'bein sports france': 'UCfj4kQ6_mYO5r4hzX5KloVw', // @beinsportsfrance → auteur RSS: « beIN SPORTS France »
+  'wimbledon': 'UCNa8NxMgSm7m4Ii9d4QGk1Q',          // @Wimbledon → auteur RSS: « Wimbledon »
+  'formula 1': 'UCB_qr75-ydFVKSF9Dmo6izg',          // @Formula1 → auteur RSS: « FORMULA 1 »
+  'canal+ sport': 'UC8ggH3zU61XO0nMskSQwZdA',       // @CANALPlusSport → auteur RSS: « CANAL+ Sport »
+  // Non mappées volontairement : « eurosport » (nu) et « canal+ » (nu) sont des
+  // catch-all redondants — les chaînes officielles France ci-dessus couvrent le risque.
 };
 
 /** Résout un nom de chaîne (tel qu'en pack) en channelId, ou undefined si inconnu. */
@@ -59,11 +68,15 @@ export function resolveChannelId(channelName: string): string | undefined {
 /** Déséchappe les entités XML courantes rencontrées dans les titres YouTube. */
 function unescapeXml(s: string): string {
   return s
+    // Déballage CDATA en premier : le contenu y est littéral (ni entités ni balises).
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
+    // Entités hexadécimales (&#x27;, &#xE9;…) avant les décimales.
+    .replace(/&#[xX]([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
     .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
     .replace(/&amp;/g, '&'); // en dernier pour ne pas ré-interpréter les autres
 }

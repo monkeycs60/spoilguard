@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import { COMPETITIONS } from '../data/competitions';
+import { resolveChannelId } from '../lib/rss';
 
 export function createCompetitionsRoute() {
   const app = new Hono();
@@ -16,6 +17,9 @@ export function createCompetitionsRoute() {
       maxAgeHours: comp.maxAgeHours,
       channels: comp.channels,
       lexicon: comp.lexicon,
+      // true = au moins une chaîne du pack est résolue en channelId → le feed peut
+      // renvoyer des vidéos. Le sélecteur de la web app masque les feedAvailable:false.
+      feedAvailable: comp.channels.some((name) => resolveChannelId(name) !== undefined),
     }));
     return c.json({ competitions });
   });

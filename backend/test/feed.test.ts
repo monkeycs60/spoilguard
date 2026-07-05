@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createApp } from '../src/app';
-import { TTLCache } from '../src/lib/cache';
+import { TTLCache, classificationKey } from '../src/lib/cache';
 import { createRateLimiter } from '../src/lib/rateLimit';
 import { parseFeed, resolveChannelId, createRssClient, type RssEntry } from '../src/lib/rss';
 import { fallbackResult, type Classification, type ClassifyFn } from '../src/lib/classifier';
@@ -48,12 +48,34 @@ describe('parseFeed', () => {
     const empty = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><title>X</title><author><name>X</name></author></feed>`;
     expect(parseFeed(empty)).toEqual([]);
   });
+
+  it('décode les entités hexadécimales (&#x27;) et déballe le CDATA (M1)', () => {
+    const xml = `<?xml version="1.0"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns="http://www.w3.org/2005/Atom">
+  <author><name><![CDATA[CANAL+ Sport]]></name></author>
+  <entry>
+    <yt:videoId>ZZZ</yt:videoId>
+    <title>L&#x27;&#xE9;tape <![CDATA[& le sprint]]></title>
+    <published>2026-07-05T00:00:00Z</published>
+  </entry>
+</feed>`;
+    const entries = parseFeed(xml);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].channel).toBe('CANAL+ Sport'); // CDATA déballé
+    expect(entries[0].title).toBe("L'étape & le sprint"); // &#x27; + &#xE9; + CDATA
+  });
 });
 
 describe('resolveChannelId', () => {
   it('résout un nom de pack (insensible à la casse) en channelId UC…', () => {
     expect(resolveChannelId('Tour de France')).toMatch(/^UC[\w-]{22}$/);
     expect(resolveChannelId('eurosport france')).toMatch(/^UC[\w-]{22}$/);
+  });
+  it('résout les chaînes Wimbledon / F1 ajoutées (I1)', () => {
+    expect(resolveChannelId('bein sports france')).toBe('UCfj4kQ6_mYO5r4hzX5KloVw');
+    expect(resolveChannelId('Wimbledon')).toBe('UCNa8NxMgSm7m4Ii9d4QGk1Q');
+    expect(resolveChannelId('formula 1')).toBe('UCB_qr75-ydFVKSF9Dmo6izg');
+    expect(resolveChannelId('canal+ sport')).toBe('UC8ggH3zU61XO0nMskSQwZdA');
   });
   it('renvoie undefined pour une chaîne inconnue', () => {
     expect(resolveChannelId('chaîne inexistante')).toBeUndefined();
@@ -136,14 +158,15 @@ describe('GET /feed/:competitionId', () => {
     expect(JSON.stringify(body)).not.toContain('écrase la montagne');
   });
 
-  it('expose le titre original (safeTitle + originalTitle) pour un non-spoiler', async () => {
+  it('utilise le titre original comme safeTitle pour un non-spoiler (jamais d\'originalTitle)', async () => {
     const app = makeApp();
     const res = await app.request('/feed/tdf-2026');
     const body = (await res.json()) as FeedResponse;
 
     const safe = body.videos.find((v) => v.videoId === 'v-old')!;
     expect(safe.safeTitle).toBe('Recette de crêpes bretonnes');
-    expect(safe.originalTitle).toBe('Recette de crêpes bretonnes');
+    // Aucun `originalTitle` n'est jamais exposé (rien n'est révélable côté web).
+    expect('originalTitle' in safe).toBe(false);
   });
 
   it('met la réponse en cache (2e appel sans re-fetch ni re-classify)', async () => {
@@ -160,21 +183,44 @@ describe('GET /feed/:competitionId', () => {
     expect(classifySpy).toHaveBeenCalledTimes(1);
   });
 
-  it('réutilise le cache de classification partagé avec /classify', async () => {
+  it('réutilise le cache de classification de la MÊME compétition (sans re-classifier)', async () => {
     const cache = new TTLCache<Classification>();
-    // Pré-remplit le cache comme si /classify avait déjà vu cette vidéo.
-    cache.set('v-new', { videoId: 'v-new', spoiler: false, safeTitle: null });
+    // Pré-remplit le cache pour tdf-2026 comme si /classify avait déjà vu v-mid (non-spoiler).
+    cache.set(classificationKey(['tdf-2026'], 'v-mid'), { videoId: 'v-mid', spoiler: false, safeTitle: null });
     const classifySpy = vi.fn(classify);
     const app = createApp({ classify: classifySpy, fetchChannelFeed: async () => RSS_ENTRIES, cache });
 
     const res = await app.request('/feed/tdf-2026');
     const body = (await res.json()) as FeedResponse;
-    // Servie depuis le cache → traitée comme non-spoiler (titre original exposé).
-    const fromCache = body.videos.find((v) => v.videoId === 'v-new')!;
-    expect(fromCache.originalTitle).toBe('Pogacar écrase la montagne, écart énorme');
-    // classify n'a été appelé QUE pour les 2 misses (v-mid, v-old).
+    // Servie depuis le cache tdf → non-spoiler → titre original en safeTitle.
+    const fromCache = body.videos.find((v) => v.videoId === 'v-mid')!;
+    expect(fromCache.safeTitle).toBe('Présentation du parcours étape 6');
+    // classify n'a PAS été appelé pour v-mid (cache hit de la même compétition).
     const classified = classifySpy.mock.calls[0][1].map((v) => v.videoId);
-    expect(classified).not.toContain('v-new');
+    expect(classified).not.toContain('v-mid');
+  });
+
+  it('n\'utilise PAS le cache d\'une AUTRE compétition — pas de fuite de spoiler (C1)', async () => {
+    const cache = new TTLCache<Classification>();
+    // Un cache posé pour tdf-2026 classe v-new « sans spoiler » (contexte cyclisme).
+    // v-new porte pourtant un titre spoilant ("Pogacar écrase la montagne…").
+    cache.set(classificationKey(['tdf-2026'], 'v-new'), { videoId: 'v-new', spoiler: false, safeTitle: null });
+    const classifySpy = vi.fn(classify);
+    const app = createApp({ classify: classifySpy, fetchChannelFeed: async () => RSS_ENTRIES, cache });
+
+    // Requête sur une AUTRE compétition : le cache tdf-2026 ne doit PAS servir.
+    const res = await app.request('/feed/wimbledon-2026');
+    const body = (await res.json()) as FeedResponse;
+
+    // v-new est re-classé pour wimbledon (→ spoiler via le mock) : son titre original
+    // ne doit JAMAIS apparaître nulle part dans la réponse wimbledon.
+    expect(JSON.stringify(body)).not.toContain('écrase la montagne');
+    const fromFeed = body.videos.find((v) => v.videoId === 'v-new')!;
+    expect(fromFeed.safeTitle).not.toContain('écrase la montagne');
+    expect('originalTitle' in fromFeed).toBe(false);
+    // classify A ÉTÉ appelé pour v-new (le cache d'une autre compétition n'a pas servi).
+    const classified = classifySpy.mock.calls.flatMap((call) => call[1].map((v) => v.videoId));
+    expect(classified).toContain('v-new');
   });
 
   it('429 au-delà du quota (rate limiter partagé)', async () => {

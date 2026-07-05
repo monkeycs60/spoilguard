@@ -1,6 +1,8 @@
 // Construction de l'app Hono (séparée de server.ts pour être testable sans
 // démarrer de serveur HTTP).
 
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -78,9 +80,17 @@ export function createApp(deps: AppDeps) {
   // Companion web app (Phase 3) : servie en statique sur / depuis backend/public/.
   // Enregistré APRÈS les routes API : leurs handlers répondent avant ce middleware
   // (Hono compose les handlers dans l'ordre d'enregistrement).
-  app.use('/*', serveStatic({ root: './public', index: 'index.html' }));
+  //
+  // serveStatic (@hono/node-server) résout `root`/`path` relativement au cwd du
+  // process. Or le serveur peut être lancé depuis n'importe quel dossier. On calcule
+  // donc le chemin ABSOLU de public/ à partir de ce fichier source (import.meta.url),
+  // puis on le convertit en chemin RELATIF au cwd réel (ce que serveStatic attend) —
+  // ainsi GET / sert le HTML quel que soit le dossier de lancement.
+  const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
+  const publicRoot = path.relative(process.cwd(), publicDir) || '.';
+  app.use('/*', serveStatic({ root: publicRoot, index: 'index.html' }));
   // Fallback SPA : tout chemin non résolu retombe sur index.html.
-  app.get('*', serveStatic({ path: './public/index.html' }));
+  app.get('*', serveStatic({ path: `${publicRoot}/index.html` }));
 
   return app;
 }

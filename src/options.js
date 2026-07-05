@@ -4,7 +4,7 @@
 
 import { PACKS } from './lib/pack.js';
 
-const DEFAULT_BACKEND = 'http://o2nn42t9tx9tzfukiamwlrnl.137.74.43.81.sslip.io';
+const DEFAULT_BACKEND = 'https://o2nn42t9tx9tzfukiamwlrnl.137.74.43.81.sslip.io';
 const DEFAULT_COMPETITIONS = ['tdf-2026'];
 const PAUSE_MS = 10 * 60 * 1000;
 

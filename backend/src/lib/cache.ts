@@ -15,6 +15,18 @@ export type CacheOptions = {
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000; // 24 h
 const DEFAULT_MAX_ENTRIES = 50_000;
 
+/**
+ * Clé de cache de classification : la classification DÉPEND des compétitions
+ * demandées (une vidéo Wimbledon peut être « sans spoiler » pour le TdF mais
+ * spoiler pour Wimbledon). Scoper la clé par [compétitions triées] + videoId
+ * empêche toute contamination inter-compétitions (C1) : deux jeux de compétitions
+ * distincts ne partagent JAMAIS un résultat, et changer de compétitions invalide
+ * naturellement le cache.
+ */
+export function classificationKey(competitions: string[], videoId: string): string {
+  return [...competitions].sort().join('+') + '|' + videoId;
+}
+
 type Entry<V> = { value: V; expiresAt: number };
 
 export class TTLCache<V> {

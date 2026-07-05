@@ -8,7 +8,7 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { TTLCache } from '../lib/cache';
+import { TTLCache, classificationKey } from '../lib/cache';
 import { createRateLimiter, type RateLimiter } from '../lib/rateLimit';
 import { resolveCompetitions } from '../data/competitions';
 import type { Classification, ClassifyFn, Video } from '../lib/classifier';
@@ -87,7 +87,7 @@ export function createClassifyRoute(deps: ClassifyRouteDeps) {
     const hits = new Map<string, Classification>();
     const misses: Video[] = [];
     for (const v of videos) {
-      const cached = cache.get(v.videoId);
+      const cached = cache.get(classificationKey(competitions, v.videoId));
       if (cached) hits.set(v.videoId, cached);
       else misses.push(v);
     }
@@ -97,7 +97,7 @@ export function createClassifyRoute(deps: ClassifyRouteDeps) {
       const fresh = await deps.classify(competitions, misses);
       for (const r of fresh) {
         // Un repli (LLM indisponible) ne doit pas empoisonner le cache 24h.
-        if (!r.fallback) cache.set(r.videoId, r);
+        if (!r.fallback) cache.set(classificationKey(competitions, r.videoId), r);
         hits.set(r.videoId, r);
       }
     }

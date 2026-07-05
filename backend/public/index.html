@@ -81,13 +81,6 @@
     .badge.protected { color: var(--emerald); background: rgba(16,185,129,0.12); }
     .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
     .title { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
-    .reveal {
-      margin-top: 8px; background: none; border: 1px solid var(--border);
-      color: var(--muted); font-size: 12px; padding: 5px 10px; border-radius: 8px;
-      cursor: pointer; font-family: inherit;
-    }
-    .reveal:active { background: var(--surface-2); }
-    .original { margin-top: 8px; font-size: 13px; color: var(--muted); font-style: italic; display: none; }
 
     /* Overlay lecteur */
     .overlay {
@@ -213,8 +206,9 @@
 
         // Vignette YouTube (image publique, pas de titre).
         var thumbUrl = "https://i.ytimg.com/vi/" + encodeURIComponent(v.videoId) + "/hqdefault.jpg";
-        var hasOriginal = Object.prototype.hasOwnProperty.call(v, "originalTitle");
 
+        // Aucun titre n'est « révélable » côté web : un spoiler ne doit jamais l'être,
+        // un non-spoiler n'a rien à révéler (son safeTitle EST déjà le titre original).
         li.innerHTML =
           '<div class="thumb" style="background-image:url(\'' + thumbUrl + '\')">' +
             '<div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>' +
@@ -228,23 +222,10 @@
               '<span>' + esc(relativeDate(v.publishedAt)) + '</span>' +
             '</div>' +
             '<p class="title">' + esc(v.safeTitle) + '</p>' +
-            (hasOriginal
-              ? '<button class="reveal" type="button">Révéler le titre</button>' +
-                '<p class="original">' + esc(v.originalTitle) + '</p>'
-              : '') +
           '</div>';
 
         li.querySelector(".thumb").addEventListener("click", function () { openPlayer(v.videoId); });
 
-        if (hasOriginal) {
-          var btn = li.querySelector(".reveal");
-          var orig = li.querySelector(".original");
-          btn.addEventListener("click", function () {
-            var shown = orig.style.display === "block";
-            orig.style.display = shown ? "none" : "block";
-            btn.textContent = shown ? "Révéler le titre" : "Masquer le titre";
-          });
-        }
         feedEl.appendChild(li);
       });
     }
@@ -265,8 +246,12 @@
       fetch("/competitions")
         .then(function (r) { return r.json(); })
         .then(function (data) {
-          var comps = (data.competitions || []).filter(function (c) { return c.active; });
-          if (comps.length === 0) { setStatus("Aucune compétition active.", true); return; }
+          // On ne propose que les compétitions actives ET dont le feed est disponible
+          // (au moins une chaîne mappée en channelId côté backend).
+          var comps = (data.competitions || []).filter(function (c) {
+            return c.active && c.feedAvailable !== false;
+          });
+          if (comps.length === 0) { setStatus("Aucune compétition disponible.", true); return; }
           comps.forEach(function (c) {
             var opt = document.createElement("option");
             opt.value = c.id;

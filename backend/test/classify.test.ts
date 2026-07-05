@@ -67,6 +67,30 @@ describe('POST /classify — cache', () => {
     expect(classify).toHaveBeenCalledTimes(1);
   });
 
+  it('ne partage PAS le cache entre compétitions différentes (anti-contamination C1)', async () => {
+    const classify = vi.fn<ClassifyFn>(async (_c, videos) =>
+      videos.map((v) => ({ videoId: v.videoId, spoiler: false, safeTitle: null }))
+    );
+    const cache = new TTLCache<Classification>();
+    const app = createApp({ classify, cache });
+
+    const videos = [{ videoId: 'v1', title: 'Étape 3' }];
+    // 1er appel : compétitions [tdf-2026] → miss → 1 appel LLM.
+    const r1 = await post(app, { competitions: ['tdf-2026'], videos });
+    expect(r1.headers.get('X-Cache-Misses')).toBe('1');
+    expect(classify).toHaveBeenCalledTimes(1);
+
+    // Même videoId mais compétitions DIFFÉRENTES → clé de cache distincte → 2e appel LLM.
+    const r2 = await post(app, { competitions: ['wimbledon-2026'], videos });
+    expect(r2.headers.get('X-Cache-Misses')).toBe('1');
+    expect(classify).toHaveBeenCalledTimes(2);
+
+    // Re-jouer la 1re compétition sert bien le cache (clé scopée réutilisée).
+    const r3 = await post(app, { competitions: ['tdf-2026'], videos });
+    expect(r3.headers.get('X-Cache-Hits')).toBe('1');
+    expect(classify).toHaveBeenCalledTimes(2);
+  });
+
   it('ne met PAS en cache un résultat de fallback (LLM indisponible)', async () => {
     const classify = vi.fn<ClassifyFn>(async (_c, videos) => videos.map(fallbackResult));
     const cache = new TTLCache<Classification>();

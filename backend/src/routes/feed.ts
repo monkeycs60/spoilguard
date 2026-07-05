@@ -5,23 +5,24 @@
 // renvoie une liste de vidéos SANS spoiler.
 //
 // GARANTIE FORTE : le titre ORIGINAL d'une vidéo spoiler n'est JAMAIS renvoyé.
-// - spoiler=true  → safeTitle = titre réécrit (ou générique), PAS d'originalTitle.
-// - spoiler=false → safeTitle = titre original, + originalTitle (révélable côté UI).
+// - spoiler=true  → safeTitle = titre réécrit (ou générique).
+// - spoiler=false → safeTitle = titre original (déjà sûr).
+// Aucun `originalTitle` n'est jamais exposé : rien n'est « révélable » côté web
+// (un spoiler ne doit jamais l'être, un non-spoiler n'a rien à révéler).
 
 import { Hono } from 'hono';
-import { TTLCache } from '../lib/cache';
+import { TTLCache, classificationKey } from '../lib/cache';
 import { createRateLimiter, type RateLimiter } from '../lib/rateLimit';
 import { getCompetition, type Competition } from '../data/competitions';
 import { createRssClient, resolveChannelId, type RssEntry } from '../lib/rss';
 import type { Classification, ClassifyFn, Video } from '../lib/classifier';
 
-/** Une vidéo telle que renvoyée par /feed. `originalTitle` absent si spoiler. */
+/** Une vidéo telle que renvoyée par /feed (jamais de titre original révélable). */
 export type FeedVideo = {
   videoId: string;
   safeTitle: string;
   publishedAt: string;
   channel: string;
-  originalTitle?: string;
 };
 
 export type FeedResponse = { videos: FeedVideo[] };
@@ -118,15 +119,18 @@ export function createFeedRoute(deps: FeedRouteDeps) {
     // 4. Classification via le pipeline partagé (mêmes cache-hit/miss que /classify).
     const misses: Video[] = [];
     const classifications = new Map<string, Classification>();
+    // Clé de cache scopée par compétition (= [competitionId] pour un feed) : un
+    // résultat posé par une AUTRE compétition ne peut pas fuiter ici (C1).
     for (const e of sorted) {
-      const hit = cache.get(e.videoId);
+      const hit = cache.get(classificationKey([competitionId], e.videoId));
       if (hit) classifications.set(e.videoId, hit);
       else misses.push({ videoId: e.videoId, title: e.title, channel: e.channel });
     }
     if (misses.length > 0) {
       const fresh = await deps.classify([competitionId], misses);
       for (const r of fresh) {
-        if (!r.fallback) cache.set(r.videoId, r); // un repli ne pollue pas le cache 24 h
+        // un repli ne pollue pas le cache 24 h
+        if (!r.fallback) cache.set(classificationKey([competitionId], r.videoId), r);
         classifications.set(r.videoId, r);
       }
     }
@@ -146,13 +150,12 @@ export function createFeedRoute(deps: FeedRouteDeps) {
           channel: e.channel,
         };
       }
-      // Non-spoiler : le titre original est sûr → on l'expose (safeTitle + originalTitle).
+      // Non-spoiler : le titre original est sûr → il devient directement le safeTitle.
       return {
         videoId: e.videoId,
         safeTitle: e.title,
         publishedAt: e.publishedAt,
         channel: e.channel,
-        originalTitle: e.title,
       };
     });
 
