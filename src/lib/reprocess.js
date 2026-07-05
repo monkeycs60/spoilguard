@@ -30,6 +30,21 @@ export function decideReprocess({ isProcessed, currentTitle, safeTitle, revealed
   return current === (safeTitle ?? '').trim() ? 'ignore' : 'reset';
 }
 
+// Décision pure de recyclage d'une carte réutilisée en place pour une AUTRE vidéo,
+// détecté par le videoId (et non par le titre). Cas central : la pseudo-carte /watch,
+// dont l'élément ytd-watch-metadata est réutilisé d'une vidéo à l'autre lors d'une
+// navigation SPA (sans reload) — seuls l'URL et le H1 changent. On compare le videoId
+// mémorisé au moment du voilage au videoId courant (lu dans l'URL /watch) :
+//   storedVideoId  : videoId capturé quand la carte a été voilée/traitée (peut être absent)
+//   currentVideoId : videoId frais (URL courante), null si illisible
+// Sorties (booléen) :
+//   true  → videoIds réels et différents → autre vidéo → l'appelant doit tout réinitialiser
+//   false → identiques, ou l'un des deux absent (prudence : pas de reset sans certitude)
+export function videoIdChanged(storedVideoId, currentVideoId) {
+  if (!storedVideoId || !currentVideoId) return false;
+  return storedVideoId !== currentVideoId;
+}
+
 // Décision pure de réévaluation d'une carte VOILÉE quand son âge affiché arrive ou
 // change après coup. Contexte du bug « sur-voile » : processCard peut voiler une carte
 // par prudence (ageText null car #metadata-line pas encore peuplé). Quand les

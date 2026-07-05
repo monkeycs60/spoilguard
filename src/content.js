@@ -8,7 +8,7 @@ import { buildLocalSafeTitle } from './lib/safeTitle.js';
 import { pickVeilPack } from './lib/veilPack.js';
 import { veilingEnabled } from './lib/gate.js';
 import { extractCard, CARD_SELECTOR } from './lib/extract.js';
-import { decideReprocess, decideAgeUpdate } from './lib/reprocess.js';
+import { decideReprocess, decideAgeUpdate, videoIdChanged } from './lib/reprocess.js';
 import { backendDecision } from './lib/backendDecision.js';
 import { previewDecision, parseVideoIdFromHref } from './lib/previewDecision.js';
 
@@ -37,9 +37,22 @@ function isWatchCard(card) {
   return !!card.matches?.(WATCH_SELECTOR);
 }
 
+// videoId RÉEL de la page /watch courante, relu à chaque appel depuis location.href :
+// la navigation SPA (suggestion cliquée) change l'URL SANS reload ni recréation de la
+// pseudo-carte, donc l'id doit être ré-évalué à chaque (re)traitement, jamais mis en
+// cache. Réutilise le parseur testé de previewDecision. null si l'URL n'expose pas de v=.
+function watchVideoId() {
+  return parseVideoIdFromHref(globalThis.location?.href || '');
+}
+
 // Extraction spécifique à la pseudo-carte /watch (structure différente des cartes de
-// liste). videoId est un simple sentinelle « présence du titre » : shouldVeil ne s'en
-// sert pas, il ne sert qu'au garde « carte pas encore peuplée » de processCard.
+// liste). Le videoId est le VRAI id lu dans l'URL (et non un sentinelle) : la pseudo-carte
+// est ainsi une carte à part entière → classifiable par le backend (retitrage riche,
+// souvent servi instantanément depuis le cache session avec le même titre que la carte
+// cliquée), comptabilisée dans le badge, et inscrite au registre des videoIds voilés
+// (bloque aussi preview/mur de fin la concernant). Le garde « carte pas encore peuplée »
+// repose désormais sur `title` (voir processCard : videoId présent dès le chargement de
+// l'URL, mais on attend le H1).
 function extractWatchCard(card) {
   const titleEl = card.querySelector(
     'h1.ytd-watch-metadata yt-formatted-string, h1 yt-formatted-string',
@@ -58,7 +71,7 @@ function extractWatchCard(card) {
       break;
     }
   }
-  return { videoId: title ? 'watch' : null, title, channel, ageText, titleEl };
+  return { videoId: watchVideoId(), title, channel, ageText, titleEl };
 }
 
 // Sélectionne le bon extracteur selon le type de nœud (liste vs page /watch).
@@ -129,9 +142,10 @@ const reportedBlockedIds = new Set();
 
 // Signale au service worker le blocage EFFECTIF d'une vidéo (1re fois pour ce videoId).
 // Fire-and-forget : le SW maintient le compteur du jour + le badge. La pseudo-carte /watch
-// (videoId sentinelle 'watch') est exclue (pas une carte de résultat comptabilisable).
+// a désormais un vrai videoId → elle compte comme un blocage (acceptable : c'est bien une
+// vidéo spoiler voilée), le SW dédup le jour de toute façon.
 function reportBlocked(videoId) {
-  if (!videoId || videoId === 'watch') return;
+  if (!videoId) return;
   if (reportedBlockedIds.has(videoId)) return;
   reportedBlockedIds.add(videoId);
   const rt = globalThis.chrome && chrome.runtime;
@@ -156,8 +170,9 @@ function reportBlocked(videoId) {
 const veiledVideoIds = new Set();
 
 function addVeiledId(card, videoId) {
-  // videoId sentinelle 'watch' (pseudo-carte /watch) exclu : pas de preview le concernant.
-  if (!videoId || videoId === 'watch') return;
+  // Inclut la pseudo-carte /watch (vrai videoId) : bloque aussi une preview globale ou une
+  // tuile de mur de fin qui rejouerait CETTE vidéo par-dessus la page.
+  if (!videoId) return;
   card.dataset.spoilguardVideoId = videoId;
   veiledVideoIds.add(videoId);
   refreshGlobalLeaks();
@@ -340,6 +355,22 @@ function processCard(card) {
 function reprocessCard(card) {
   const titleEl = findTitleEl(card);
   const st = getCardState(card) || {};
+  // Garde-fou recyclage SPA de la pseudo-carte /watch : l'élément ytd-watch-metadata est
+  // réutilisé d'une vidéo à l'autre (navigation sans reload) ; le titre peut muter par
+  // étapes (métadonnées avant H1), donc on tranche sur le videoId — id mémorisé au voilage
+  // vs id de l'URL courante. Différents → autre vidéo → reset complet AVANT réévaluation
+  // (re-voile + reclassification backend du nouveau titre). La révélation utilisateur est
+  // laissée au chemin existant (decideReprocess compare au titre révélé).
+  if (
+    isWatchCard(card) &&
+    processed.has(card) &&
+    st.status !== 'revealed' &&
+    videoIdChanged(st.videoId, watchVideoId())
+  ) {
+    fullReset(card);
+    processCard(card);
+    return;
+  }
   const decision = decideReprocess({
     isProcessed: processed.has(card),
     currentTitle: (titleEl?.textContent || '').trim(),
@@ -410,9 +441,10 @@ function maybeUpdateVeiledAge(card, titleEl) {
 // invalidé, timeout) → on ne fait rien, le voile générique Phase 1 subsiste.
 function requestBackendClassification(card, info) {
   const videoId = info.videoId;
-  // La pseudo-carte /watch a un videoId sentinelle ('watch') sans clé de cache réelle
-  // et le contrat backend attend un vrai videoId → on la laisse sous voile générique.
-  if (!videoId || videoId === 'watch') return;
+  // La pseudo-carte /watch a désormais un vrai videoId → elle est envoyée au backend comme
+  // les cartes de liste (cache session → souvent un hit instantané rendant le MÊME titre
+  // réécrit que la carte cliquée, au lieu du voile générique).
+  if (!videoId) return;
   const rt = globalThis.chrome && chrome.runtime;
   if (!rt || typeof rt.sendMessage !== 'function') return;
 

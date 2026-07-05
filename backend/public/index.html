@@ -66,6 +66,22 @@
       content: ""; position: absolute; inset: 0;
       background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.45));
     }
+    /* Visuel neutre des vidéos protégées : AUCUNE image YouTube n'est chargée
+       (une miniature, même floutée en CSS, reste devinable et le flou est
+       réversible via l'inspecteur). Dégradé sombre + emoji compétition + motif. */
+    .thumb.masked {
+      background: radial-gradient(circle at 50% 38%, #1b2a23 0%, #0d1512 60%, #080c0a 100%);
+    }
+    .thumb.masked::before {
+      content: ""; position: absolute; inset: 0; z-index: 0;
+      background-image: repeating-linear-gradient(45deg, rgba(16,185,129,0.06) 0 2px, transparent 2px 15px);
+    }
+    .masked-emoji {
+      position: absolute; inset: 0; z-index: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 64px; line-height: 1; opacity: 0.5;
+      user-select: none; pointer-events: none;
+    }
     .play {
       position: relative; z-index: 1; width: 54px; height: 54px; border-radius: 50%;
       background: rgba(16, 185, 129, 0.92); display: flex; align-items: center; justify-content: center;
@@ -140,6 +156,11 @@
     var overlayEl = document.getElementById("overlay");
     var mountEl = document.getElementById("player-mount");
 
+    // Emoji de la compétition affichée, utilisé comme visuel neutre des cartes
+    // protégées (jamais de miniature YouTube pour un spoiler).
+    var competitionEmoji = {};
+    var currentEmoji = "🛡"; // 🛡 par défaut
+
     function setStatus(msg, isError) {
       statusEl.textContent = msg || "";
       statusEl.style.display = msg ? "block" : "none";
@@ -204,15 +225,29 @@
         var li = document.createElement("li");
         li.className = "card";
 
-        // Vignette YouTube (image publique, pas de titre).
-        var thumbUrl = "https://i.ytimg.com/vi/" + encodeURIComponent(v.videoId) + "/hqdefault.jpg";
+        // Miniature : pour une vidéo protégée (v.spoiler), on NE charge PAS la
+        // miniature YouTube — elle spoile visuellement (podium, bras levés…) et
+        // un flou CSS reste devinable/réversible. À la place, visuel neutre CSS.
+        // Non-spoiler : la miniature publique est sûre, on l'affiche normalement.
+        var thumbHtml;
+        if (v.spoiler) {
+          thumbHtml =
+            '<div class="thumb masked">' +
+              '<span class="masked-emoji" aria-hidden="true">' + esc(currentEmoji) + '</span>' +
+              '<div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>' +
+            '</div>';
+        } else {
+          var thumbUrl = "https://i.ytimg.com/vi/" + encodeURIComponent(v.videoId) + "/hqdefault.jpg";
+          thumbHtml =
+            '<div class="thumb" style="background-image:url(\'' + thumbUrl + '\')">' +
+              '<div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>' +
+            '</div>';
+        }
 
         // Aucun titre n'est « révélable » côté web : un spoiler ne doit jamais l'être,
         // un non-spoiler n'a rien à révéler (son safeTitle EST déjà le titre original).
         li.innerHTML =
-          '<div class="thumb" style="background-image:url(\'' + thumbUrl + '\')">' +
-            '<div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>' +
-          '</div>' +
+          thumbHtml +
           '<div class="body">' +
             '<div class="meta">' +
               '<span class="badge protected">&#128737; protégé</span>' +
@@ -231,6 +266,7 @@
     }
 
     function loadFeed(id) {
+      currentEmoji = competitionEmoji[id] || "🛡";
       setStatus("Chargement du feed…", false);
       feedEl.innerHTML = "";
       fetch("/feed/" + encodeURIComponent(id))
@@ -253,6 +289,7 @@
           });
           if (comps.length === 0) { setStatus("Aucune compétition disponible.", true); return; }
           comps.forEach(function (c) {
+            if (c.emoji) competitionEmoji[c.id] = c.emoji;
             var opt = document.createElement("option");
             opt.value = c.id;
             opt.textContent = (c.emoji ? c.emoji + " " : "") + c.label;

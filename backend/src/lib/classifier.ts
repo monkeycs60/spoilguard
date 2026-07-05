@@ -28,6 +28,14 @@ export type ClassifyFn = (
 
 export const DEFAULT_MODEL_ID = 'gpt-oss-120b';
 
+/**
+ * Version du prompt de classification. Incrémentée à CHAQUE changement de règles
+ * qui peut modifier un verdict, pour invalider le cache backend (24 h) : sans ça,
+ * des verdicts erronés d'une version précédente resteraient servis. Intégrée à la
+ * clé de cache (`classificationKey`, cache.ts) sous la forme `v{N}|…`.
+ */
+export const PROMPT_VERSION = 2;
+
 // Schéma strict imposé au LLM. On enveloppe le tableau dans un objet `results`
 // (plus fiable que le mode array brut sur certains providers).
 export const classificationSchema = z.object({
@@ -80,18 +88,36 @@ Est un spoiler (spoiler=true) tout titre qui RÉVÈLE ou laisse DEVINER un résu
 - nationalité ou nom qui trahit le gagnant ;
 - ton émotionnel révélateur (« incroyable exploit », « domination totale », « effondrement », « craque »).
 
+RÈGLES RENFORCÉES (souvent manquées — applique-les strictement) :
+- Nom d'une ÉQUIPE + une performance = SPOILER. Une équipe qui « domine », est « en démonstration », « écrase », fait une « masterclass », est « intouchable/injouable/impériale » révèle QUI a gagné ou dominé. Ex. « UAE Emirates en démonstration », « Visma écrase l'étape », « la masterclass de la Soudal » → spoiler=true.
+- Toute mention qu'un coureur OU une équipe « offre la victoire », « fait un cadeau », « laisse gagner », « se sacrifie pour » un autre = SPOILER (ça dévoile le vainqueur ET le second) → spoiler=true.
+- Un titre qui contient « (résumé de l'étape N) », « résumé étape N », « le film de l'étape » etc. sur une chaîne officielle ET avec du contenu émotionnel/superlatif (démonstration, insolent, incroyable, majuscules criardes) = SPOILER → spoiler=true. Ne te laisse PAS berner par le mot « résumé » : un résumé émotionnel trahit toujours le résultat.
+
 N'est PAS un spoiler (spoiler=false) :
-- une vidéo NON liée aux compétitions suivies (autre sport, autre sujet, autre édition) → spoiler=false ;
-- une annonce neutre AVANT course (parcours, favoris, présentation d'étape) sans résultat.
+- une vidéo NON liée aux compétitions suivies (autre sport, autre compétition non suivie, autre sujet, autre édition) → spoiler=false ;
+- une annonce NEUTRE AVANT course (parcours, tracé, favoris, présentation d'étape, engagés) sans aucun résultat ni ton révélateur.
 
 En cas de doute sur une vidéo liée à une compétition suivie → spoiler=true (prudence).
 
 Pour chaque vidéo avec spoiler=true, rédige un safeTitle EN FRANÇAIS qui :
-- conserve la compétition, l'étape/journée et le TYPE de contenu (résumé, interview, analyse, réactions, temps forts) ;
-- NE donne AUCUN indice de résultat (ni nom de vainqueur, ni classement, ni ton révélateur) ;
+- conserve la compétition, l'étape/journée et le TYPE de contenu ;
+- NE donne AUCUN indice de résultat (ni nom de vainqueur/équipe dominante, ni classement, ni ton révélateur) ;
 - est préfixé de l'emoji de la compétition concernée.
-Exemple : "🚴 Tour de France 2026 – Résumé étape 2".
+
+TYPE DE CONTENU (choisis le bon mot — l'utilisateur cherche LE format qu'il veut regarder) :
+- « Résumé étape N » = DÉFAUT pour toute vidéo POST-course qui MONTRE la course : résumé, temps forts, highlights, « le film de l'étape », « revivez l'étape ». Dans le doute entre les formats, choisis « Résumé ».
+- « Résumé long étape N » UNIQUEMENT si le titre indique une version longue/intégrale (« résumé long », « version longue », « intégrale »).
+- « Temps forts étape N » UNIQUEMENT si le titre dit explicitement « temps forts » / « highlights ».
+- « Analyse étape N » UNIQUEMENT si le titre indique clairement un débrief/plateau/décryptage (« débrief », « analyse », « décryptage », « on refait l'étape »). N'utilise JAMAIS « Analyse » pour un simple résumé/temps forts d'étape.
+- « Interview / Réactions » si le titre est une interview isolée ou des réactions d'après-course (« interview », « réaction de », « au micro »).
+Exemple générique : "🚴 Tour de France 2026 – Résumé étape 2".
 Pour spoiler=false, mets safeTitle=null.
+
+EXEMPLES (AVANT le titre réel → APRÈS le safeTitle attendu) :
+- « Tour de France 2026 : UAE Emirates XRG en DÉMONSTRATION à Barcelone (résumé de l'étape 2) » → spoiler=true, safeTitle="🚴 Tour de France 2026 – Résumé étape 2" (équipe en démonstration = résultat révélé ; c'est un résumé, PAS une analyse).
+- « TOUR DE FRANCE 2026 - INSOLENTS ! Tadej Pogacar OFFRE LA VICTOIRE à Isaac Del Toro sur l'étape 2 » → spoiler=true, safeTitle="🚴 Tour de France 2026 – Résumé étape 2" (« offre la victoire » = vainqueur révélé ; temps forts d'étape = Résumé, PAS Analyse).
+- « Tour de France 2026 – Débrief étape 2 : on refait la course au micro » → spoiler=true, safeTitle="🚴 Tour de France 2026 – Analyse étape 2" (débrief/plateau = Analyse).
+- « Le parcours du Tour de France 2026 dévoilé » → spoiler=false, safeTitle=null (annonce neutre avant course, aucun résultat).
 
 Réponds STRICTEMENT avec un objet { results: [...] } contenant une entrée par vidéo, avec le même videoId.
 

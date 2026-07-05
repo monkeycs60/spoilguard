@@ -24,6 +24,11 @@ export type FeedVideo = {
   safeTitle: string;
   publishedAt: string;
   channel: string;
+  /**
+   * true = titre réécrit / voilé (le client NE DOIT PAS charger la miniature
+   * YouTube brute, elle spoile visuellement). false = contenu sûr, miniature OK.
+   */
+  spoiler: boolean;
 };
 
 export type FeedResponse = { videos: FeedVideo[] };
@@ -171,6 +176,7 @@ export function createFeedRoute(deps: FeedRouteDeps) {
           safeTitle: raw.slice(0, SAFE_TITLE_MAX),
           publishedAt: e.publishedAt,
           channel: e.channel,
+          spoiler: true,
         };
       }
       // Non-spoiler : le titre original est sûr → il devient directement le safeTitle.
@@ -179,6 +185,7 @@ export function createFeedRoute(deps: FeedRouteDeps) {
         safeTitle: e.title,
         publishedAt: e.publishedAt,
         channel: e.channel,
+        spoiler: false,
       };
     });
 

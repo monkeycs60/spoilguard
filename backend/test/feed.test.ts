@@ -153,6 +153,8 @@ describe('GET /feed/:competitionId', () => {
 
     const spoiler = body.videos.find((v) => v.videoId === 'v-new')!;
     expect(spoiler.safeTitle).toBe('🚴 Tour de France – Résumé (sans résultat)');
+    // Flag exposé au client pour ne PAS charger la miniature YouTube (spoil visuel).
+    expect(spoiler.spoiler).toBe(true);
     // Le titre original d'un spoiler ne doit apparaître NULLE PART dans la réponse.
     expect('originalTitle' in spoiler).toBe(false);
     expect(JSON.stringify(body)).not.toContain('écrase la montagne');
@@ -165,6 +167,8 @@ describe('GET /feed/:competitionId', () => {
 
     const safe = body.videos.find((v) => v.videoId === 'v-old')!;
     expect(safe.safeTitle).toBe('Recette de crêpes bretonnes');
+    // Non-spoiler → flag false → le client peut afficher la miniature YouTube.
+    expect(safe.spoiler).toBe(false);
     // Aucun `originalTitle` n'est jamais exposé (rien n'est révélable côté web).
     expect('originalTitle' in safe).toBe(false);
   });

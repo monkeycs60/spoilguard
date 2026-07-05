@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decideReprocess, decideAgeUpdate } from '../src/lib/reprocess.js';
+import { decideReprocess, decideAgeUpdate, videoIdChanged } from '../src/lib/reprocess.js';
 
 // decideReprocess pilote le re-traitement d'une carte YouTube touchée par une
 // mutation childList (titre peuplé/recyclé). Sortie : 'ignore' | 'reset' | 'process'.
@@ -192,4 +192,26 @@ describe('decideAgeUpdate — réévaluation de l’âge tardif', () => {
     expect(decideAgeUpdate({ storedAge: undefined, newAge: 'il y a 2 jours' })).toBe(
       'reevaluate',
     ));
+});
+
+describe('videoIdChanged', () => {
+  it('ids réels différents (navigation SPA /watch → /watch) → true', () =>
+    expect(videoIdChanged('Y8lwQN3ezqs', 'sdoHRXoLK0A')).toBe(true));
+
+  it('ids réels identiques (même vidéo, simple mutation) → false', () =>
+    expect(videoIdChanged('Y8lwQN3ezqs', 'Y8lwQN3ezqs')).toBe(false));
+
+  it('videoId courant absent (URL illisible, titre pas encore peuplé) → false, pas de reset sans certitude', () => {
+    expect(videoIdChanged('Y8lwQN3ezqs', null)).toBe(false);
+    expect(videoIdChanged('Y8lwQN3ezqs', '')).toBe(false);
+    expect(videoIdChanged('Y8lwQN3ezqs', undefined)).toBe(false);
+  });
+
+  it('videoId stocké absent (carte jamais voilée / clean sans id) → false', () => {
+    expect(videoIdChanged(null, 'Y8lwQN3ezqs')).toBe(false);
+    expect(videoIdChanged('', 'Y8lwQN3ezqs')).toBe(false);
+    expect(videoIdChanged(undefined, 'Y8lwQN3ezqs')).toBe(false);
+  });
+
+  it('les deux absents → false', () => expect(videoIdChanged(null, undefined)).toBe(false));
 });

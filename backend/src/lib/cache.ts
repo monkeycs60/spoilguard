@@ -5,6 +5,8 @@
 //   (Map conserve l'ordre d'insertion) — suffisant pour un cache de classification
 //   qui se reconstruit tout seul.
 
+import { PROMPT_VERSION } from './classifier';
+
 export type CacheOptions = {
   /** Durée de vie d'une entrée en millisecondes (défaut 24 h). */
   ttlMs?: number;
@@ -22,9 +24,13 @@ const DEFAULT_MAX_ENTRIES = 50_000;
  * empêche toute contamination inter-compétitions (C1) : deux jeux de compétitions
  * distincts ne partagent JAMAIS un résultat, et changer de compétitions invalide
  * naturellement le cache.
+ *
+ * La clé est PRÉFIXÉE par la version du prompt (`v{PROMPT_VERSION}|…`) : un
+ * changement de règles de classification (donc de verdict) invalide d'un coup
+ * tout le cache 24 h, au lieu de continuer à servir les verdicts obsolètes.
  */
 export function classificationKey(competitions: string[], videoId: string): string {
-  return [...competitions].sort().join('+') + '|' + videoId;
+  return `v${PROMPT_VERSION}|` + [...competitions].sort().join('+') + '|' + videoId;
 }
 
 type Entry<V> = { value: V; expiresAt: number };

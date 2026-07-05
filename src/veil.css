@@ -20,13 +20,15 @@
 .spoilguard-veiled .metadata-snippet-container,
 .spoilguard-veiled ytd-expandable-metadata-renderer { display: none !important; }
 /* Le titre neutre réinjecté doit rester lisible (le sélecteur transparent ci-dessus
-   le cible aussi). On hérite de la couleur du parent (couleur normale du titre) :
-   `inherit` marche en thème clair ET sombre, là où une var absente retombait sur un
-   #f1f1f1 quasi blanc illisible sur fond blanc. Les sélecteurs .safe-title composés
-   (avec #video-title / .ytLockup…) l'emportent en spécificité sur la règle transparent. */
+   le cible aussi). `inherit` ne suffit pas : sur l'accueil, YouTube pose la couleur
+   sur l'élément titre lui-même (le parent est noir par défaut → titre noir en dark).
+   Déterministe : YouTube met l'attribut `dark` sur <html> en thème sombre. */
 .spoilguard-veiled #video-title.spoilguard-safe-title,
 .spoilguard-veiled .ytLockupMetadataViewModelTitle.spoilguard-safe-title,
-.spoilguard-safe-title { color: inherit !important; }
+.spoilguard-safe-title { color: #0f0f0f !important; }
+html[dark] .spoilguard-veiled #video-title.spoilguard-safe-title,
+html[dark] .spoilguard-veiled .ytLockupMetadataViewModelTitle.spoilguard-safe-title,
+html[dark] .spoilguard-safe-title { color: #f1f1f1 !important; }
 
 /* Fuites HORS carte. Au survol, YouTube joue une preview vidéo dans un élément GLOBAL
    `ytd-video-preview` (miniature + 1res secondes en clair) positionné par-dessus la

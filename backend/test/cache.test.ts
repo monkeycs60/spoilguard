@@ -1,8 +1,39 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { TTLCache } from '../src/lib/cache';
+import { TTLCache, classificationKey } from '../src/lib/cache';
+import { PROMPT_VERSION } from '../src/lib/classifier';
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe('classificationKey', () => {
+  it('préfixe la clé par la version du prompt (invalidation cache au bump)', () => {
+    expect(classificationKey(['tdf-2026'], 'v1')).toBe(`v${PROMPT_VERSION}|tdf-2026|v1`);
+  });
+
+  it('utilise la version courante (2)', () => {
+    expect(PROMPT_VERSION).toBe(2);
+    expect(classificationKey(['tdf-2026'], 'v1').startsWith('v2|')).toBe(true);
+  });
+
+  it('trie les compétitions pour une clé stable indépendante de l\'ordre', () => {
+    const a = classificationKey(['wimbledon-2026', 'tdf-2026'], 'v1');
+    const b = classificationKey(['tdf-2026', 'wimbledon-2026'], 'v1');
+    expect(a).toBe(b);
+    expect(a).toBe(`v${PROMPT_VERSION}|tdf-2026+wimbledon-2026|v1`);
+  });
+
+  it('sépare deux jeux de compétitions distincts (pas de contamination)', () => {
+    expect(classificationKey(['tdf-2026'], 'v1')).not.toBe(
+      classificationKey(['wimbledon-2026'], 'v1')
+    );
+  });
+
+  it('un bump de version change toutes les clés existantes', () => {
+    // Sanity : la clé v1 « historique » n'est plus jamais produite tant que
+    // PROMPT_VERSION > 1, donc les verdicts v1 en cache ne sont plus lus.
+    expect(classificationKey(['tdf-2026'], 'v1').startsWith('v1|')).toBe(false);
+  });
 });
 
 describe('TTLCache', () => {
