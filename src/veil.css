@@ -27,3 +27,14 @@
 .spoilguard-veiled #video-title.spoilguard-safe-title,
 .spoilguard-veiled .ytLockupMetadataViewModelTitle.spoilguard-safe-title,
 .spoilguard-safe-title { color: inherit !important; }
+
+/* Fuites HORS carte. Au survol, YouTube joue une preview vidéo dans un élément GLOBAL
+   `ytd-video-preview` (miniature + 1res secondes en clair) positionné par-dessus la
+   carte mais HORS d'elle : nos règles scopées `.spoilguard-veiled …` ne l'attrapent pas.
+   content.js pose `.spoilguard-preview-blocked` (registre des videoIds voilés) sur cet
+   élément — et sur les tuiles du mur de fin de lecture `a.ytp-videowall-still`. On masque
+   par `visibility` (pas `display`) pour ne pas casser le layout interne de YouTube, +
+   `display:none` sur la balise <video> par sécurité (coupe tout rendu résiduel). */
+ytd-video-preview.spoilguard-preview-blocked,
+a.ytp-videowall-still.spoilguard-preview-blocked { visibility: hidden !important; }
+ytd-video-preview.spoilguard-preview-blocked video { display: none !important; }

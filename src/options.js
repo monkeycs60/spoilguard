@@ -49,8 +49,12 @@ function localCompetitions() {
   }));
 }
 
+function resolveBase(backendUrl) {
+  return (backendUrl || DEFAULT_BACKEND).replace(/\/+$/, '');
+}
+
 async function loadCompetitions(backendUrl) {
-  const base = (backendUrl || DEFAULT_BACKEND).replace(/\/+$/, '');
+  const base = resolveBase(backendUrl);
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 4000);
@@ -64,6 +68,31 @@ async function loadCompetitions(backendUrl) {
   } catch {
     return localCompetitions();
   }
+}
+
+// Teste la disponibilité du backend via GET /health et met à jour la pastille.
+async function checkBackend(backendUrl) {
+  const base = resolveBase(backendUrl);
+  $('backendUrlDisplay').textContent = base;
+
+  const pill = $('backendStatus');
+  const text = $('backendStatusText');
+  pill.className = 'status-pill';
+  text.textContent = 'Vérification…';
+
+  let online = false;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch(base + '/health', { signal: ctrl.signal });
+    clearTimeout(t);
+    online = res.ok;
+  } catch {
+    online = false;
+  }
+
+  pill.classList.add(online ? 'online' : 'offline');
+  text.textContent = online ? 'En ligne' : 'Hors ligne';
 }
 
 function renderCompetitions(list) {
@@ -114,12 +143,16 @@ async function toggleComp(id, on) {
 }
 
 function refreshPauseState(pauseUntil) {
-  const el = $('pauseState');
+  const pill = $('pauseState');
+  const text = $('pauseStateText');
   const remaining = typeof pauseUntil === 'number' ? pauseUntil - Date.now() : 0;
   if (remaining > 0) {
-    el.textContent = `Actif encore ${Math.ceil(remaining / 60000)} min`;
+    pill.className = 'status-pill online';
+    pill.style.display = '';
+    text.textContent = `Révélé encore ${Math.ceil(remaining / 60000)} min`;
   } else {
-    el.textContent = '';
+    pill.style.display = 'none';
+    text.textContent = '';
   }
 }
 
@@ -142,6 +175,7 @@ async function init() {
     const v = backendInput.value.trim();
     await storageSet({ backendUrl: v });
     setStatus('URL enregistrée');
+    checkBackend(v);
     renderCompetitions(await loadCompetitions(v));
   });
 
@@ -153,6 +187,8 @@ async function init() {
   });
 
   refreshPauseState(store.pauseUntil);
+
+  checkBackend(store.backendUrl);
 
   const list = await loadCompetitions(store.backendUrl);
   renderCompetitions(list);

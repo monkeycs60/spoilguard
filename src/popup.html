@@ -6,61 +6,191 @@
     <style>
       :root {
         color-scheme: light dark;
-        --bg: #ffffff; --fg: #1a1c1f; --muted: #61656c;
-        --border: #e2e5ea; --accent: #2f6df6; --accent-fg: #fff;
+        --bg: #f5f7f6;
+        --surface: #ffffff;
+        --surface-2: #eceff0;
+        --text: #0d1512;
+        --muted: #576560;
+        --line: rgba(6, 20, 15, 0.10);
+        --line-strong: rgba(6, 20, 15, 0.16);
+        --brand: #12a150;
+        --brand-strong: #0b7d3c;
+        --brand-ink: #ffffff;
+        --brand-tint: rgba(18, 161, 80, 0.10);
+        --danger: #e0453f;
+        --danger-tint: rgba(224, 69, 63, 0.10);
+        --shadow: 0 1px 2px rgba(6, 20, 15, 0.05), 0 12px 30px -20px rgba(6, 20, 15, 0.35);
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg: #1d2026; --fg: #e8eaed; --muted: #9aa0a8;
-          --border: #2c313a; --accent: #4c86ff;
+          --bg: #0a0f0d;
+          --surface: #111815;
+          --surface-2: #161f1b;
+          --text: #e8efeb;
+          --muted: #93a49c;
+          --line: rgba(255, 255, 255, 0.09);
+          --line-strong: rgba(255, 255, 255, 0.16);
+          --brand: #2ec26a;
+          --brand-strong: #28b361;
+          --brand-ink: #04140b;
+          --brand-tint: rgba(46, 194, 106, 0.12);
+          --danger: #ff5f5a;
+          --danger-tint: rgba(255, 95, 90, 0.12);
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 36px -22px rgba(0, 0, 0, 0.8);
         }
       }
       * { box-sizing: border-box; }
       body {
-        width: 260px; margin: 0; padding: 16px;
-        font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-        background: var(--bg); color: var(--fg);
+        width: 320px; margin: 0; padding: 16px;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 14px; line-height: 1.45;
+        background: var(--bg); color: var(--text);
+        -webkit-font-smoothing: antialiased;
       }
-      .head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-      .head .name { font-weight: 700; font-size: 15px; }
-      .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-      .row + .row { margin-top: 12px; }
-      .desc { color: var(--muted); font-size: 12px; }
-      .switch { position: relative; width: 44px; height: 26px; flex: none; }
+
+      /* Header */
+      .head { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+      .head svg { display: block; flex: none; }
+      .head .name { font-weight: 800; font-size: 16px; letter-spacing: -0.02em; }
+      .head .name b { color: var(--brand); font-weight: 800; }
+
+      /* Protection card */
+      .guard {
+        border: 1px solid var(--line-strong); border-radius: 14px;
+        background: var(--surface); box-shadow: var(--shadow);
+        padding: 14px; transition: border-color 0.15s, background 0.15s;
+      }
+      .guard.on { border-color: color-mix(in srgb, var(--brand) 45%, var(--line-strong)); background: var(--brand-tint); }
+      .guard-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .guard-state { display: flex; align-items: center; gap: 9px; min-width: 0; }
+      .status-dot {
+        width: 10px; height: 10px; border-radius: 50%; flex: none;
+        background: var(--muted); box-shadow: 0 0 0 4px transparent;
+      }
+      .guard.on .status-dot {
+        background: var(--brand);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent);
+      }
+      .guard-label { font-weight: 700; font-size: 15px; }
+      .guard-sub { color: var(--muted); font-size: 12px; }
+
+      /* Toggle */
+      .switch { position: relative; width: 46px; height: 27px; flex: none; }
       .switch input { opacity: 0; width: 0; height: 0; }
-      .slider { position: absolute; inset: 0; cursor: pointer; background: var(--border); border-radius: 26px; transition: .15s; }
-      .slider::before { content: ""; position: absolute; height: 20px; width: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .15s; }
-      input:checked + .slider { background: var(--accent); }
-      input:checked + .slider::before { transform: translateX(18px); }
-      button {
-        width: 100%; font: inherit; font-weight: 600; cursor: pointer;
-        border: 1px solid var(--border); background: transparent; color: var(--fg);
-        padding: 9px 12px; border-radius: 8px; margin-top: 14px;
+      .slider {
+        position: absolute; inset: 0; cursor: pointer;
+        background: var(--line-strong); border-radius: 27px; transition: 0.18s;
       }
-      hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
-      a { color: var(--accent); text-decoration: none; font-size: 13px; }
-      #pauseInfo { color: var(--muted); font-size: 12px; margin-top: 8px; min-height: 15px; }
+      .slider::before {
+        content: ""; position: absolute; height: 21px; width: 21px; left: 3px; top: 3px;
+        background: #fff; border-radius: 50%; transition: 0.18s;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      }
+      input:checked + .slider { background: var(--brand); }
+      input:checked + .slider::before { transform: translateX(19px); }
+
+      /* Stat */
+      .stat {
+        display: flex; align-items: center; gap: 12px; margin-top: 12px;
+        border: 1px solid var(--line); border-radius: 12px;
+        background: var(--surface); padding: 12px 14px;
+      }
+      .stat .num {
+        font-size: 26px; font-weight: 800; letter-spacing: -0.02em;
+        color: var(--brand); line-height: 1; font-variant-numeric: tabular-nums;
+      }
+      .stat .cap { color: var(--muted); font-size: 12.5px; line-height: 1.3; }
+      .stat .cap b { color: var(--text); font-weight: 600; }
+
+      /* Competitions badges */
+      .comps { margin-top: 14px; }
+      .comps .lbl {
+        font-size: 11px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.06em; color: var(--muted); margin-bottom: 7px;
+      }
+      .badges { display: flex; flex-wrap: wrap; gap: 6px; }
+      .badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        border: 1px solid var(--line-strong); border-radius: 999px;
+        background: var(--surface-2); padding: 4px 10px 4px 8px;
+        font-size: 12px; font-weight: 600;
+      }
+      .badge .e { font-size: 13px; }
+      .badge.empty { color: var(--muted); font-weight: 500; border-style: dashed; }
+
+      /* Pause button */
+      .pause-btn {
+        width: 100%; margin-top: 14px; font: inherit; font-weight: 700; cursor: pointer;
+        border: 1px solid var(--line-strong); background: var(--surface); color: var(--text);
+        padding: 11px 12px; border-radius: 11px; transition: border-color 0.12s, color 0.12s;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      }
+      .pause-btn:hover { border-color: var(--brand); color: var(--brand); }
+      .pause-btn.active {
+        border-color: color-mix(in srgb, var(--danger) 45%, var(--line-strong));
+        background: var(--danger-tint); color: var(--danger);
+      }
+      .pause-btn.active:hover { border-color: var(--danger); }
+      .pause-btn svg { flex: none; }
+
+      hr { border: none; border-top: 1px solid var(--line); margin: 14px 0 12px; }
+      .foot { display: flex; align-items: center; justify-content: space-between; }
+      a.opt {
+        color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600;
+        display: inline-flex; align-items: center; gap: 5px;
+      }
+      a.opt:hover { color: var(--brand); }
     </style>
   </head>
   <body>
-    <div class="head"><span>🛡️</span><span class="name">SpoilGuard</span></div>
-
-    <div class="row">
-      <div>
-        <div>Protection</div>
-        <div class="desc">Masquer les spoilers</div>
-      </div>
-      <label class="switch">
-        <input id="enabled" type="checkbox" />
-        <span class="slider"></span>
-      </label>
+    <div class="head">
+      <svg width="24" height="26" viewBox="0 0 26 28" fill="none" aria-hidden="true">
+        <path d="M13 1.5 24 5.2v8.1c0 6.6-4.6 11.4-11 13.2C6.6 24.7 2 19.9 2 13.3V5.2L13 1.5Z" fill="var(--brand)" />
+        <path d="M8.6 14.2l2.9 2.9 5.9-6.6" stroke="var(--brand-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span class="name">Spoil<b>Guard</b></span>
     </div>
 
-    <button id="pause" type="button">Pause 10 min</button>
-    <div id="pauseInfo"></div>
+    <div class="guard" id="guard">
+      <div class="guard-row">
+        <div class="guard-state">
+          <span class="status-dot"></span>
+          <div>
+            <div class="guard-label" id="guardLabel">Protection active</div>
+            <div class="guard-sub">Masque les spoilers sur YouTube</div>
+          </div>
+        </div>
+        <label class="switch">
+          <input id="enabled" type="checkbox" />
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="stat">
+      <span class="num" id="blockedCount">0</span>
+      <span class="cap"><b id="blockedNoun">spoiler bloqué</b> aujourd'hui</span>
+    </div>
+
+    <div class="comps">
+      <div class="lbl">Compétitions surveillées</div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <button id="pause" class="pause-btn" type="button">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+      </svg>
+      <span id="pauseLabel">Tout révéler 10 min</span>
+    </button>
 
     <hr />
-    <a id="options" href="#">Paramètres et compétitions →</a>
+    <div class="foot">
+      <a id="options" class="opt" href="#">
+        Paramètres et compétitions
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+      </a>
+    </div>
 
     <script src="popup.js"></script>
   </body>

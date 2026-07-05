@@ -10,6 +10,7 @@ import { veilingEnabled } from './lib/gate.js';
 import { extractCard, CARD_SELECTOR } from './lib/extract.js';
 import { decideReprocess, decideAgeUpdate } from './lib/reprocess.js';
 import { backendDecision } from './lib/backendDecision.js';
+import { previewDecision, parseVideoIdFromHref } from './lib/previewDecision.js';
 
 // État mutable des compétitions actives + interrupteurs (pause / on-off). Rechargé
 // depuis chrome.storage.local au démarrage et à chaque changement (sans reload).
@@ -71,6 +72,33 @@ const processed = new WeakSet();
 // et de le détacher proprement au reset/à la révélation.
 const dblHandlers = new WeakMap();
 
+// Registre des videoIds ACTUELLEMENT voilés. Sert aux fuites HORS carte : YouTube joue
+// une preview vidéo (miniature + 1res secondes) dans un élément GLOBAL positionné
+// par-dessus la carte, hors de sa portée CSS scopée ; on ne peut la bloquer qu'en
+// reconnaissant son videoId. Alimenté au voilage, purgé au dé-voilage/révélation/
+// recyclage (via addVeiledId/removeVeiledId branchés dans veil/stripVeil). Le retitrage
+// backend garde la carte voilée → on la LAISSE dans le registre. Chaque carte mémorise
+// « son » id voilé dans data-spoilguard-video-id : on retire du Set exactement ce qu'on
+// y a mis, sans dépendre du videoId courant (que YouTube a pu recycler entre-temps).
+const veiledVideoIds = new Set();
+
+function addVeiledId(card, videoId) {
+  // videoId sentinelle 'watch' (pseudo-carte /watch) exclu : pas de preview le concernant.
+  if (!videoId || videoId === 'watch') return;
+  card.dataset.spoilguardVideoId = videoId;
+  veiledVideoIds.add(videoId);
+  refreshGlobalLeaks();
+}
+
+function removeVeiledId(card) {
+  const id = card.dataset.spoilguardVideoId;
+  if (id) {
+    veiledVideoIds.delete(id);
+    delete card.dataset.spoilguardVideoId;
+    refreshGlobalLeaks();
+  }
+}
+
 // Retrouve l'élément titre d'une carte (les deux familles de markup de liste + le
 // h1 de la pseudo-carte /watch, pour que stripVeil/reveal retrouvent le bon nœud).
 function findTitleEl(card) {
@@ -127,6 +155,10 @@ function stripVeil(card, titleEl, restoreText) {
   }
   card.classList.remove('spoilguard-veiled');
   detachReveal(card);
+  // La carte n'est plus voilée → la sortir du registre des videoIds voilés (débloque une
+  // éventuelle preview globale la concernant). backendRetitle ne passe PAS ici (la carte
+  // reste voilée) donc son id reste bien dans le registre.
+  removeVeiledId(card);
 }
 
 // Révélation par l'utilisateur : on découvre le vrai titre et on marque la carte
@@ -181,6 +213,9 @@ function veil(card, info) {
   // métadonnées arrivent après coup, que l'âge réel diffère (correctif sur-voile).
   card.dataset.spoilguardAge = info.ageText ?? '';
   attachReveal(card, titleEl);
+  // Enregistre le videoId voilé pour bloquer les fuites hors carte (preview globale,
+  // mur de fin de lecture) qui afficheraient cette vidéo par-dessus/hors de la carte.
+  addVeiledId(card, info.videoId);
 }
 
 function processCard(card) {
@@ -375,6 +410,75 @@ function backendRetitle(card, titleEl, safeTitle) {
   card.dataset.spoilguardBackend = '1';
 }
 
+// --- Fuites HORS carte (overlays / éléments globaux) ------------------------------
+// YouTube affiche du contenu voilé HORS de la portée CSS scopée .spoilguard-veiled :
+//   1) ytd-video-preview : preview vidéo GLOBALE jouée au survol d'une carte, posée
+//      par-dessus (miniature + 1res secondes en clair). Porte active/playing quand
+//      elle joue ; son videoId est dans un lien interne a[href*="watch?v="].
+//   2) mur de fin de lecture /watch (.ytp-endscreen-content) : tuiles a.ytp-videowall-still
+//      suggérant d'autres vidéos, titres/vignettes en clair (même document que la page).
+// La décision (videoId ∈ registre → bloquer) est déléguée à previewDecision (pure,
+// testée) ; ici seulement le câblage DOM : pose/retire la classe + met la vidéo en pause.
+const PREVIEW_BLOCKED_CLASS = 'spoilguard-preview-blocked';
+
+let previewEl = null;
+let previewObserver = null;
+
+// Bloque/débloque l'élément de preview global selon le videoId qu'il s'apprête à jouer.
+function updatePreviewBlock(el) {
+  if (!el) return;
+  const link = el.querySelector('a[href*="watch?v="]');
+  const videoId = parseVideoIdFromHref(link?.getAttribute('href'));
+  if (previewDecision(videoId, veiledVideoIds)) {
+    el.classList.add(PREVIEW_BLOCKED_CLASS);
+    el.querySelector('video')?.pause?.();
+  } else {
+    el.classList.remove(PREVIEW_BLOCKED_CLASS);
+  }
+}
+
+// ytd-video-preview est unique/persistant mais peut n'exister qu'après le 1er survol. On
+// l'attache dès qu'il apparaît, puis on observe ses attributs (active/playing) et son
+// sous-arbre (le href de la preview change quand on survole une autre carte).
+function ensurePreviewObserver() {
+  if (previewObserver) return;
+  const el = document.querySelector('ytd-video-preview');
+  if (!el) return;
+  previewEl = el;
+  updatePreviewBlock(el);
+  previewObserver = new MutationObserver(() => updatePreviewBlock(el));
+  previewObserver.observe(el, {
+    attributes: true,
+    attributeFilter: ['active', 'playing', 'href'],
+    childList: true,
+    subtree: true,
+  });
+}
+
+// Mur de fin de lecture : masque les tuiles dont le videoId est voilé (même contrat).
+function updateEndscreenBlocks() {
+  for (const still of document.querySelectorAll('a.ytp-videowall-still')) {
+    const videoId = parseVideoIdFromHref(still.getAttribute('href'));
+    still.classList.toggle(PREVIEW_BLOCKED_CLASS, previewDecision(videoId, veiledVideoIds));
+  }
+}
+
+// Un nœud ajouté fait-il (ou contient-il) une tuile de mur de fin de lecture ?
+function touchesEndscreen(node) {
+  return (
+    node.matches?.('a.ytp-videowall-still, .ytp-endscreen-content') ||
+    !!node.querySelector?.('a.ytp-videowall-still')
+  );
+}
+
+// Ré-applique les décisions de blocage quand le REGISTRE change (voile/dé-voile), sans
+// attendre une mutation de l'overlay — ex : le backend dé-voile une carte pendant que sa
+// preview est encore affichée. Best-effort et silencieux (peut tourner avant tout paint).
+function refreshGlobalLeaks() {
+  if (previewEl) updatePreviewBlock(previewEl);
+  updateEndscreenBlocks();
+}
+
 function scan(root) {
   if (root.matches?.(CARD_SELECTOR) || root.matches?.(WATCH_SELECTOR)) processCard(root);
   root.querySelectorAll?.(CARD_SELECTOR).forEach(processCard);
@@ -416,7 +520,14 @@ function cardOf(target) {
 new MutationObserver((muts) => {
   for (const m of muts) {
     if (m.type === 'childList') {
-      for (const n of m.addedNodes) if (n.nodeType === 1) scan(n);
+      for (const n of m.addedNodes) {
+        if (n.nodeType !== 1) continue;
+        scan(n);
+        // Le mur de fin de lecture apparaît/​se peuple par ajout de nœuds : dès qu'une
+        // tuile arrive, réévaluer le blocage (pas d'observer dédié → aucun surcoût en
+        // lecture normale).
+        if (touchesEndscreen(n)) updateEndscreenBlocks();
+      }
       // Les titres YouTube sont peuplés/recyclés en remplaçant des nœuds (childList),
       // pas via characterData. Si la mutation vise l'intérieur d'une carte connue,
       // on relance la décision de re-traitement.
@@ -428,6 +539,8 @@ new MutationObserver((muts) => {
       if (card) reprocessCard(card);
     }
   }
+  // ytd-video-preview peut apparaître à tout moment (1er survol) → tenter de l'attacher.
+  ensurePreviewObserver();
 }).observe(document.documentElement, {
   childList: true,
   subtree: true,
@@ -435,6 +548,7 @@ new MutationObserver((muts) => {
 });
 
 if (document.body) scan(document.body);
+ensurePreviewObserver();
 
 // Charge l'état persistant (compétitions actives, pause, on/off) puis re-applique.
 // Best-effort : hors contexte extension (tests, injection manuelle) → défauts en dur.

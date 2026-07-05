@@ -7,106 +7,193 @@
     <style>
       :root {
         color-scheme: light dark;
-        --bg: #f6f7f9;
-        --card: #ffffff;
-        --fg: #1a1c1f;
-        --muted: #61656c;
-        --border: #e2e5ea;
-        --accent: #2f6df6;
-        --accent-fg: #ffffff;
+        --bg: #f5f7f6;
+        --surface: #ffffff;
+        --surface-2: #eceff0;
+        --text: #0d1512;
+        --muted: #576560;
+        --line: rgba(6, 20, 15, 0.10);
+        --line-strong: rgba(6, 20, 15, 0.16);
+        --brand: #12a150;
+        --brand-strong: #0b7d3c;
+        --brand-ink: #ffffff;
+        --brand-tint: rgba(18, 161, 80, 0.10);
+        --danger: #e0453f;
+        --danger-tint: rgba(224, 69, 63, 0.10);
+        --shadow: 0 1px 2px rgba(6, 20, 15, 0.05), 0 18px 40px -24px rgba(6, 20, 15, 0.30);
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg: #14161a;
-          --card: #1d2026;
-          --fg: #e8eaed;
-          --muted: #9aa0a8;
-          --border: #2c313a;
-          --accent: #4c86ff;
+          --bg: #0a0f0d;
+          --surface: #111815;
+          --surface-2: #161f1b;
+          --text: #e8efeb;
+          --muted: #93a49c;
+          --line: rgba(255, 255, 255, 0.09);
+          --line-strong: rgba(255, 255, 255, 0.16);
+          --brand: #2ec26a;
+          --brand-strong: #28b361;
+          --brand-ink: #04140b;
+          --brand-tint: rgba(46, 194, 106, 0.12);
+          --danger: #ff5f5a;
+          --danger-tint: rgba(255, 95, 90, 0.12);
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 22px 48px -26px rgba(0, 0, 0, 0.75);
         }
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-        background: var(--bg);
-        color: var(--fg);
-        padding: 32px 16px;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 15px; line-height: 1.5;
+        background: var(--bg); color: var(--text);
+        padding: 40px 18px;
+        -webkit-font-smoothing: antialiased;
       }
-      main { max-width: 620px; margin: 0 auto; }
-      h1 { font-size: 22px; margin: 0 0 4px; }
-      .sub { color: var(--muted); margin: 0 0 24px; }
+      main { max-width: 640px; margin: 0 auto; }
+
+      /* Header */
+      .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 6px; }
+      .brand svg { display: block; flex: none; }
+      .brand .name { font-size: 24px; font-weight: 900; letter-spacing: -0.03em; }
+      .brand .name b { color: var(--brand); font-weight: 900; }
+      .sub { color: var(--muted); margin: 0 0 26px; font-size: 15px; }
+
       section {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 18px 20px;
+        background: var(--surface);
+        border: 1px solid var(--line-strong);
+        border-radius: 16px;
+        padding: 20px 22px;
         margin-bottom: 18px;
+        box-shadow: var(--shadow);
       }
-      h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 14px; }
+      .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+      h2 {
+        font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em;
+        color: var(--muted); margin: 0; font-weight: 700;
+      }
+      .sec-desc { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+
+      /* Competition cards */
       .comp {
-        display: flex; align-items: center; gap: 12px;
-        padding: 10px 0; border-top: 1px solid var(--border);
+        display: flex; align-items: center; gap: 13px;
+        padding: 12px; border: 1px solid var(--line); border-radius: 12px;
+        background: var(--surface-2);
       }
-      .comp:first-of-type { border-top: none; }
-      .comp .emoji { font-size: 22px; width: 28px; text-align: center; }
+      .comp + .comp { margin-top: 10px; }
+      .comp .emoji {
+        font-size: 22px; width: 42px; height: 42px; flex: none;
+        display: grid; place-items: center; border-radius: 11px;
+        background: var(--surface); border: 1px solid var(--line);
+      }
       .comp .meta { flex: 1; min-width: 0; }
-      .comp .label { font-weight: 600; }
-      .comp .id { color: var(--muted); font-size: 12px; }
-      /* Interrupteur */
-      .switch { position: relative; width: 44px; height: 26px; flex: none; }
+      .comp .label { font-weight: 700; letter-spacing: -0.01em; }
+      .comp .id { color: var(--muted); font-size: 12px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+      /* Toggle */
+      .switch { position: relative; width: 46px; height: 27px; flex: none; }
       .switch input { opacity: 0; width: 0; height: 0; }
       .slider {
         position: absolute; inset: 0; cursor: pointer;
-        background: var(--border); border-radius: 26px; transition: .15s;
+        background: var(--line-strong); border-radius: 27px; transition: 0.18s;
       }
       .slider::before {
-        content: ""; position: absolute; height: 20px; width: 20px; left: 3px; top: 3px;
-        background: #fff; border-radius: 50%; transition: .15s;
+        content: ""; position: absolute; height: 21px; width: 21px; left: 3px; top: 3px;
+        background: #fff; border-radius: 50%; transition: 0.18s;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
       }
-      input:checked + .slider { background: var(--accent); }
-      input:checked + .slider::before { transform: translateX(18px); }
-      input:disabled + .slider { opacity: .5; cursor: default; }
-      label.field { display: block; margin-bottom: 6px; color: var(--muted); font-size: 13px; }
-      input[type="url"] {
-        width: 100%; padding: 9px 11px; border-radius: 8px;
-        border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+      input:checked + .slider { background: var(--brand); }
+      input:checked + .slider::before { transform: translateX(19px); }
+      input:disabled + .slider { opacity: 0.5; cursor: default; }
+
+      /* Backend status pill */
+      .status-pill {
+        display: inline-flex; align-items: center; gap: 8px;
+        border: 1px solid var(--line-strong); border-radius: 999px;
+        padding: 5px 12px 5px 10px; font-size: 13px; font-weight: 600;
+        background: var(--surface-2);
       }
+      .status-pill .d { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+      .status-pill.online { color: var(--brand); border-color: color-mix(in srgb, var(--brand) 40%, var(--line-strong)); background: var(--brand-tint); }
+      .status-pill.online .d { background: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent); }
+      .status-pill.offline { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line-strong)); background: var(--danger-tint); }
+      .status-pill.offline .d { background: var(--danger); }
+      .backend-url { color: var(--muted); font-size: 12.5px; margin-top: 10px; word-break: break-all; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+      /* Buttons + fields */
       button {
-        font: inherit; font-weight: 600; cursor: pointer;
-        border: 1px solid var(--border); background: var(--card); color: var(--fg);
-        padding: 10px 16px; border-radius: 8px;
+        font: inherit; font-weight: 700; cursor: pointer;
+        border: 1px solid var(--line-strong); background: var(--surface); color: var(--text);
+        padding: 11px 18px; border-radius: 12px; transition: transform 0.12s, background 0.12s, border-color 0.12s;
+        display: inline-flex; align-items: center; gap: 8px;
       }
-      button.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+      button:active { transform: translateY(1px); }
+      button.primary { background: var(--brand); color: var(--brand-ink); border-color: transparent; }
+      button.primary:hover { background: var(--brand-strong); }
+      button.ghost:hover { border-color: var(--brand); color: var(--brand); }
+      button svg { flex: none; }
       .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      label.field { display: block; margin-bottom: 6px; color: var(--muted); font-size: 13px; font-weight: 600; }
+      input[type="url"] {
+        width: 100%; padding: 10px 12px; border-radius: 10px;
+        border: 1px solid var(--line-strong); background: var(--bg); color: var(--text);
+        font: inherit;
+      }
+      input[type="url"]:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); outline-offset: 1px; border-color: var(--brand); }
       .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
-      #status { color: var(--muted); font-size: 13px; min-height: 18px; margin-top: 10px; }
-      details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+      #status { color: var(--brand); font-size: 13px; font-weight: 600; min-height: 18px; margin-top: 6px; }
+      details summary {
+        cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.07em; list-style: none;
+        display: flex; align-items: center; gap: 7px;
+      }
+      details summary::-webkit-details-marker { display: none; }
+      details summary::before { content: "▸"; transition: transform 0.15s; }
+      details[open] summary::before { transform: rotate(90deg); }
     </style>
   </head>
   <body>
     <main>
-      <h1>🛡️ SpoilGuard</h1>
-      <p class="sub">Choisissez les compétitions à protéger des spoilers.</p>
+      <div class="brand">
+        <svg width="30" height="32" viewBox="0 0 26 28" fill="none" aria-hidden="true">
+          <path d="M13 1.5 24 5.2v8.1c0 6.6-4.6 11.4-11 13.2C6.6 24.7 2 19.9 2 13.3V5.2L13 1.5Z" fill="var(--brand)" />
+          <path d="M8.6 14.2l2.9 2.9 5.9-6.6" stroke="var(--brand-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span class="name">Spoil<b>Guard</b></span>
+      </div>
+      <p class="sub">Choisissez les compétitions à protéger des spoilers sur YouTube.</p>
 
       <section>
-        <h2>Compétitions</h2>
+        <div class="sec-head"><h2>Compétitions</h2></div>
+        <p class="sec-desc">Activez les compétitions dont vous voulez masquer les résultats.</p>
         <div id="competitions"><p class="hint">Chargement…</p></div>
       </section>
 
       <section>
-        <h2>Révéler temporairement</h2>
-        <div class="row">
-          <button id="reveal" type="button">Révéler tout pendant 10 min</button>
-          <span id="pauseState" class="hint"></span>
+        <div class="sec-head">
+          <h2>Service de classification</h2>
+          <span id="backendStatus" class="status-pill"><span class="d"></span><span id="backendStatusText">Vérification…</span></span>
         </div>
-        <p class="hint">Les nouvelles vidéos ne seront plus masquées pendant 10 minutes. Rechargez YouTube pour tout révéler immédiatement.</p>
+        <p class="sec-desc">L'IA qui détecte les spoilers déguisés. En cas d'indisponibilité, un filtre local prend le relais.</p>
+        <div id="backendUrlDisplay" class="backend-url"></div>
+      </section>
+
+      <section>
+        <div class="sec-head"><h2>Révéler temporairement</h2></div>
+        <p class="sec-desc">Les nouvelles vidéos ne seront plus masquées pendant 10 minutes.</p>
+        <div class="row">
+          <button id="reveal" class="primary" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+            Révéler tout pendant 10 min
+          </button>
+          <span id="pauseState" class="status-pill" style="display: none;"><span class="d"></span><span id="pauseStateText"></span></span>
+        </div>
+        <p class="hint">Rechargez YouTube pour tout révéler immédiatement.</p>
       </section>
 
       <section>
         <details>
           <summary>Avancé</summary>
-          <div style="margin-top: 14px;">
+          <div style="margin-top: 16px;">
             <label class="field" for="backendUrl">URL du service de classification</label>
             <input id="backendUrl" type="url" placeholder="http://localhost:8787" spellcheck="false" />
             <p class="hint">Laisser vide pour utiliser le serveur par défaut.</p>

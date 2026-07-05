@@ -3,10 +3,23 @@
   "name": "SpoilGuard",
   "version": "0.1.0",
   "description": "Masque les spoilers de résultats sportifs sur YouTube (Tour de France 2026).",
-  "icons": { "128": "assets/icon128.png" },
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
   "background": { "service_worker": "dist/background.js" },
   "options_page": "dist/options.html",
-  "action": { "default_popup": "dist/popup.html" },
+  "action": {
+    "default_popup": "dist/popup.html",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "32": "assets/icon32.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
+  },
   "permissions": ["storage"],
   "host_permissions": [
     "http://localhost:8787/*",
