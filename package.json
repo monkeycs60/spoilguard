@@ -12,7 +12,7 @@
     "build": "esbuild src/content.js src/background.js src/options.js src/popup.js --bundle --outdir=dist && cp src/veil.css dist/veil.css && cp src/options.html dist/options.html && cp src/popup.html dist/popup.html",
     "watch": "esbuild src/content.js --bundle --outfile=dist/content.js --watch",
     "test": "vitest run",
-    "sync-landing": "cp landing/index.html backend/public/landing/index.html"
+    "sync-landing": "cp landing/index.html backend/public/landing/index.html && cp landing/confidentialite.html backend/public/landing/confidentialite.html"
   },
   "keywords": [],
   "author": "",
