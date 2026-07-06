@@ -12,6 +12,7 @@ import { decideReprocess, decideAgeUpdate, videoIdChanged } from './lib/reproces
 import { backendDecision } from './lib/backendDecision.js';
 import { previewDecision, parseVideoIdFromHref } from './lib/previewDecision.js';
 import { shouldVeilAd } from './lib/adDecision.js';
+import { addHoverGuard, removeHoverGuard } from './lib/hoverGuard.js';
 
 // État mutable des compétitions actives + interrupteurs (pause / on-off). Rechargé
 // depuis chrome.storage.local au démarrage et à chaque changement (sans reload).
@@ -248,6 +249,9 @@ function stripVeil(card, titleEl, restoreText) {
   // (révélation utilisateur, recyclage, vidéo trop vieille) ; backendUnveil le re-pose
   // explicitement derrière (et re-attache sa propre révélation soft).
   card.classList.remove('spoilguard-softveil');
+  // La carte n'est plus voilée → retirer les intercepteurs de survol (la preview au
+  // survol redevient permise). backendUnveil re-pose la garde juste après pour le soft-veil.
+  removeHoverGuard(card);
   detachReveal(card);
   // La carte n'est plus voilée → la sortir du registre des videoIds voilés (débloque une
   // éventuelle preview globale la concernant). backendRetitle ne passe PAS ici (la carte
@@ -278,6 +282,8 @@ function reveal(card, titleEl) {
 // `revealedSoft` mémorise le geste pour ne jamais re-flouter la miniature au reprocess.
 function revealSoft(card) {
   card.classList.remove('spoilguard-softveil');
+  // Plus de soft-veil → la preview au survol est de nouveau permise sur cette carte.
+  removeHoverGuard(card);
   detachReveal(card);
   removeVeiledId(card);
   setCardState(card, { status: 'clean', softveil: false, revealedSoft: true });
@@ -310,6 +316,11 @@ function fullReset(card) {
 
 function veil(card, info) {
   card.classList.add('spoilguard-veiled');
+  // Défense JS (shadow-DOM-proof) contre la preview vidéo au survol : on intercepte en
+  // capture les évènements de survol au niveau de la carte → les listeners délégués de
+  // YouTube ne voient jamais le hover, aucune preview ne démarre (voir lib/hoverGuard.js).
+  // Posé dès le voilage, retiré par stripVeil (révélation / recyclage / dé-voile).
+  addHoverGuard(card);
   const titleEl = info.titleEl;
   if (!titleEl) return;
 
@@ -569,6 +580,10 @@ function backendUnveil(card, titleEl) {
     return;
   }
   card.classList.add('spoilguard-softveil');
+  // Le soft-veil floute encore la miniature → la preview au survol rejouerait la vidéo en
+  // clair. stripVeil a retiré la garde de survol ; on la re-pose pour le soft-veil (retirée
+  // à la révélation soft via revealSoft).
+  addHoverGuard(card);
   // stripVeil a sorti la carte du registre des videoIds voilés (elle n'est plus
   // .spoilguard-veiled). Or, tant que le soft-veil est actif, la preview vidéo GLOBALE au
   // survol (ytd-video-preview) rejouerait la miniature/les 1res secondes en clair — hors
@@ -715,6 +730,7 @@ function attachAdReveal(node, el) {
 // listener et état. N'échoue jamais sur un bloc partiel (garde-fous sur chaque étape).
 function stripAdVeil(node) {
   node.classList.remove('spoilguard-ad-veiled');
+  removeHoverGuard(node);
   const rec = adHandlers.get(node);
   if (rec) {
     rec.el.removeEventListener('dblclick', rec.handler);
@@ -732,6 +748,9 @@ function stripAdVeil(node) {
 
 function veilAd(node) {
   node.classList.add('spoilguard-ad-veiled');
+  // Même garde anti-preview de survol que pour les cartes vidéo (une pub peut aussi jouer
+  // un aperçu au survol). Retirée par stripAdVeil.
+  addHoverGuard(node);
   const titleEl = findAdTitleEl(node);
   if (titleEl) {
     const original = titleEl.textContent;
@@ -767,6 +786,31 @@ function processAd(node) {
   if (!text.trim()) return; // bloc pas encore peuplé, on repassera
   if (!shouldVeilAd(text, state.merged)) return;
   veilAd(node);
+}
+
+// Filet défensif (couche 3) : si malgré la garde de survol un élément <video> apparaît
+// (ou est déplacé) DANS une carte voilée / soft-veilée / pub voilée, on le neutralise
+// immédiatement — pause + retour à 0 — pour qu'aucune image nette ni son ne fuite. La
+// garde de survol empêche normalement le player de démarrer ; ce filet couvre les insertions
+// résiduelles (players réutilisés/déplacés par YouTube) que l'observer voit passer.
+const VEILED_ANY_SELECTOR =
+  '.spoilguard-veiled, .spoilguard-softveil, .spoilguard-ad-veiled';
+
+function neutralizeVeiledVideo(video) {
+  if (!video || typeof video.pause !== 'function') return;
+  if (!video.closest?.(VEILED_ANY_SELECTOR)) return;
+  try {
+    video.pause();
+    video.currentTime = 0;
+  } catch {
+    /* élément détaché / état transitoire → sans effet, silencieux */
+  }
+}
+
+function neutralizeVeiledVideosIn(node) {
+  if (node.nodeType !== 1) return;
+  if (node.matches?.('video')) neutralizeVeiledVideo(node);
+  node.querySelectorAll?.('video').forEach(neutralizeVeiledVideo);
 }
 
 function scan(root) {
@@ -830,6 +874,8 @@ new MutationObserver((muts) => {
       for (const n of m.addedNodes) {
         if (n.nodeType !== 1) continue;
         scan(n);
+        // Filet : un <video> inséré/déplacé dans une carte voilée est mis en pause + rembobiné.
+        neutralizeVeiledVideosIn(n);
         // Le mur de fin de lecture apparaît/​se peuple par ajout de nœuds : dès qu'une
         // tuile arrive, réévaluer le blocage (pas d'observer dédié → aucun surcoût en
         // lecture normale).

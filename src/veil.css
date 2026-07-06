@@ -26,8 +26,17 @@
   filter: blur(40px) saturate(0.55) contrast(0.9) !important;
   transform: scale(1.3) !important;
 }
-/* Coupe le preview vidéo au survol (spoil aussi) */
+/* Coupe le preview vidéo au survol (spoil aussi). La vraie garantie est la garde JS en
+   capture (voir src/lib/hoverGuard.js) qui empêche le player de démarrer, quel que soit
+   son point de montage ; cette couche CSS masque en plus les conteneurs light-DOM connus
+   du player inline (au cas où un player serait tout de même monté/déplacé). */
 .spoilguard-veiled ytd-thumbnail-overlay-inline-playback-renderer,
+.spoilguard-veiled #mouseover-overlay,
+.spoilguard-veiled #hover-overlays,
+.spoilguard-veiled #inline-player,
+.spoilguard-veiled ytd-player,
+.spoilguard-veiled .html5-video-player,
+.spoilguard-veiled #video-preview,
 .spoilguard-veiled video { display: none !important; }
 /* Fuites texte sous une carte voilée : la description (extrait) et le chip « Résumé »
    IA de YouTube spoilent en clair malgré le titre/miniature voilés. On les masque. */
@@ -57,6 +66,12 @@
   transform: scale(1.3) !important;
 }
 .spoilguard-softveil ytd-thumbnail-overlay-inline-playback-renderer,
+.spoilguard-softveil #mouseover-overlay,
+.spoilguard-softveil #hover-overlays,
+.spoilguard-softveil #inline-player,
+.spoilguard-softveil ytd-player,
+.spoilguard-softveil .html5-video-player,
+.spoilguard-softveil #video-preview,
 .spoilguard-softveil video { display: none !important; }
 /* Le titre neutre réinjecté doit rester lisible (le sélecteur transparent ci-dessus
    le cible aussi). `inherit` ne suffit pas : sur l'accueil, YouTube pose la couleur
@@ -104,4 +119,10 @@ ytd-video-preview.spoilguard-preview-blocked video { display: none !important; }
   transform: scale(1.3) !important;
 }
 .spoilguard-ad-veiled ytd-thumbnail-overlay-inline-playback-renderer,
+.spoilguard-ad-veiled #mouseover-overlay,
+.spoilguard-ad-veiled #hover-overlays,
+.spoilguard-ad-veiled #inline-player,
+.spoilguard-ad-veiled ytd-player,
+.spoilguard-ad-veiled .html5-video-player,
+.spoilguard-ad-veiled #video-preview,
 .spoilguard-ad-veiled video { display: none !important; }

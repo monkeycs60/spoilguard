@@ -162,16 +162,35 @@
   .c-hero{grid-area:hero}.c-blur{grid-area:blur}.c-prev{grid-area:prev}
   .c-desc{grid-area:desc}.c-shrt{grid-area:shrt}.c-comp{grid-area:comp}
 
-  /* colourful fake thumbnail + blur */
+  /* fake video thumbnail — sober, desaturated "capture" look */
   .ratio{position:relative;width:100%;border-radius:11px;overflow:hidden;
-    background:var(--surface-2);border:1px solid var(--line)}
+    background:var(--surface-2);border:1px solid var(--line);
+    box-shadow:inset 0 0 26px rgba(0,0,0,.30)}
   .r169{aspect-ratio:16/9}
   .r916{aspect-ratio:9/16}
+  /* base: overcast mountain-road stage — hazy sky, muted greenery, asphalt,
+     with a few soft jersey dabs (attenuated yellow / brick) in the peloton */
   .paint{position:absolute;inset:0;background:
-      radial-gradient(120% 95% at 18% 12%,#ffd23d,transparent 55%),
-      radial-gradient(120% 100% at 88% 22%,#ff5f5a,transparent 52%),
-      radial-gradient(140% 130% at 72% 92%,#2f7dff,transparent 55%),
-      linear-gradient(140deg,#17b45c,#0b7d3c)}
+      radial-gradient(21% 27% at 47% 61%,rgba(196,166,84,.55),transparent 62%),
+      radial-gradient(17% 24% at 57% 65%,rgba(150,74,58,.5),transparent 62%),
+      radial-gradient(19% 22% at 38% 63%,rgba(120,132,148,.42),transparent 62%),
+      linear-gradient(178deg,
+        #6d7982 0%,#828d94 21%,#59654f 43%,#4b5548 60%,#565b5c 77%,#3d4244 100%)}
+  /* subtle film grain (blurred away on the blurred cells — that's fine) */
+  .paint::after{content:"";position:absolute;inset:0;opacity:.55;
+    background:repeating-linear-gradient(116deg,rgba(0,0,0,.06) 0 1px,rgba(255,255,255,.015) 1px 2.5px)}
+  /* verdant forest-stage variant */
+  .paint.v-green{background:
+      radial-gradient(20% 26% at 44% 62%,rgba(190,164,88,.5),transparent 62%),
+      radial-gradient(16% 22% at 56% 66%,rgba(146,72,56,.46),transparent 62%),
+      linear-gradient(178deg,
+        #69747b 0%,#79837e 19%,#47563f 42%,#3c4a37 62%,#445049 80%,#323a35 100%)}
+  /* dusk / floodlit evening-stage variant */
+  .paint.v-dusk{background:
+      radial-gradient(22% 24% at 48% 40%,rgba(196,156,86,.42),transparent 64%),
+      radial-gradient(16% 20% at 40% 68%,rgba(140,70,56,.44),transparent 62%),
+      linear-gradient(180deg,
+        #2b3947 0%,#3a4856 24%,#34413f 50%,#2c3733 70%,#2f3a3e 86%,#212a2d 100%)}
   .paint.blur{filter:blur(19px);transform:scale(1.22)}
 
   /* protected badge (shared signature) */
@@ -411,7 +430,7 @@
         <h3>Miniatures floutées</h3>
         <div class="demo">
           <div class="ratio r169">
-            <span class="paint blur"></span>
+            <span class="paint v-green blur"></span>
             <span class="shield">Protégé</span>
           </div>
         </div>
@@ -454,7 +473,7 @@
         <h3>Shorts couverts</h3>
         <div class="demo">
           <div class="ratio r916 shrt-frame">
-            <span class="paint blur"></span>
+            <span class="paint v-dusk blur"></span>
             <span class="shield">Protégé</span>
           </div>
         </div>
