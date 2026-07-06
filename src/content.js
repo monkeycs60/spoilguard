@@ -240,6 +240,11 @@ function stripVeil(card, titleEl, restoreText) {
     el.removeAttribute('title');
   }
   card.classList.remove('spoilguard-veiled');
+  // La description sous la carte peut spoiler même quand le titre est propre
+  // (« X a remporté l'étape juste devant Y » sous « Résumé de la 2e étape »).
+  // stripVeil la restaure par défaut (révélation utilisateur, recyclage, vidéo
+  // trop vieille) ; backendUnveil la re-masque explicitement derrière.
+  card.classList.remove('spoilguard-desc-hidden');
   detachReveal(card);
   // La carte n'est plus voilée → la sortir du registre des videoIds voilés (débloque une
   // éventuelle preview globale la concernant). backendRetitle ne passe PAS ici (la carte
@@ -514,6 +519,11 @@ function applyBackendResult(card, result) {
 function backendUnveil(card, titleEl) {
   const el = titleEl || findTitleEl(card);
   stripVeil(card, el, true);
+  // Titre blanchi par le LLM ≠ carte inoffensive : la DESCRIPTION peut contenir le
+  // résultat (« Isaac Del Toro a remporté l'étape… » sous un titre neutre). On garde
+  // donc la description/le chip masqués à vie pour cette carte — seul un double-clic
+  // utilisateur (reveal) ou un recyclage (fullReset) les restaure via stripVeil.
+  card.classList.add('spoilguard-desc-hidden');
   processed.add(card);
   setCardState(card, {
     status: 'clean',

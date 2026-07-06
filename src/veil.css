@@ -19,6 +19,11 @@
    IA de YouTube spoilent en clair malgré le titre/miniature voilés. On les masque. */
 .spoilguard-veiled .metadata-snippet-container,
 .spoilguard-veiled ytd-expandable-metadata-renderer { display: none !important; }
+/* Carte blanchie par le backend (titre propre) : la description peut quand même
+   spoiler → elle reste masquée à vie via cette classe (retirée uniquement au
+   double-clic utilisateur ou au recyclage de la carte). */
+.spoilguard-desc-hidden .metadata-snippet-container,
+.spoilguard-desc-hidden ytd-expandable-metadata-renderer { display: none !important; }
 /* Le titre neutre réinjecté doit rester lisible (le sélecteur transparent ci-dessus
    le cible aussi). `inherit` ne suffit pas : sur l'accueil, YouTube pose la couleur
    sur l'élément titre lui-même (le parent est noir par défaut → titre noir en dark).
