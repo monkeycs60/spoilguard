@@ -135,21 +135,106 @@
     display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center}
   .caption .k{color:var(--brand);font-weight:700}
 
-  /* ---------- points ---------- */
-  .points{padding:78px 0 24px}
-  .points-list{display:flex;flex-direction:column;border-top:1px solid var(--line)}
-  .pt{display:flex;align-items:center;gap:26px;padding:24px 18px;
-    border-bottom:1px solid var(--line);border-radius:16px;
-    transition:background .2s ease}
-  .pt:hover{background:var(--brand-tint)}
-  .pt-ic{flex:none;width:66px;height:66px;border-radius:18px;display:grid;place-items:center;
-    background:var(--brand-tint);border:1px solid var(--line);
-    transition:transform .2s ease, border-color .2s ease}
-  .pt:hover .pt-ic{transform:translateY(-2px);border-color:var(--line-strong)}
-  .pt-ic img{width:42px;height:42px;display:block}
-  .pt p{margin:0;max-width:56ch}
-  .pt p b{display:block;font-weight:750;font-size:18px;letter-spacing:-.015em;margin-bottom:3px}
-  .pt p .dim{color:var(--muted);font-size:15.5px;line-height:1.5}
+  /* ---------- feature bento ---------- */
+  .bento-sec{padding:78px 0 24px}
+  .bento-head{text-align:center;margin-bottom:36px}
+  .bento-head h2{font-size:clamp(27px,4vw,40px);font-weight:900;letter-spacing:-.035em;margin-top:16px}
+  .bento-head p{color:var(--muted);margin:14px auto 0;font-size:16.5px;max-width:44ch}
+
+  .bento{display:grid;gap:14px;grid-template-columns:repeat(4,1fr);
+    grid-template-areas:
+      "hero hero blur shrt"
+      "hero hero prev shrt"
+      "desc desc comp comp";}
+  .cell{position:relative;display:flex;flex-direction:column;min-height:132px;
+    background:var(--surface);border:1px solid var(--line-strong);border-radius:18px;
+    padding:16px;overflow:hidden;
+    transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+  .cell:hover{transform:translateY(-2px);
+    border-color:color-mix(in srgb,var(--brand) 42%,var(--line-strong));
+    box-shadow:0 20px 44px -30px rgba(6,20,15,.55)}
+  .cell .lbl{font-family:var(--f-mono);font-size:10.5px;font-weight:700;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--brand)}
+  .cell h3{font-size:15.5px;font-weight:800;letter-spacing:-.02em;margin-top:3px;line-height:1.16}
+  .cell .sub{color:var(--muted);font-size:12.5px;line-height:1.45;margin-top:12px}
+  .cell .demo{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;margin-top:13px}
+  .cell .demo>*{max-width:100%}
+  .c-hero{grid-area:hero}.c-blur{grid-area:blur}.c-prev{grid-area:prev}
+  .c-desc{grid-area:desc}.c-shrt{grid-area:shrt}.c-comp{grid-area:comp}
+
+  /* colourful fake thumbnail + blur */
+  .ratio{position:relative;width:100%;border-radius:11px;overflow:hidden;
+    background:var(--surface-2);border:1px solid var(--line)}
+  .r169{aspect-ratio:16/9}
+  .r916{aspect-ratio:9/16}
+  .paint{position:absolute;inset:0;background:
+      radial-gradient(120% 95% at 18% 12%,#ffd23d,transparent 55%),
+      radial-gradient(120% 100% at 88% 22%,#ff5f5a,transparent 52%),
+      radial-gradient(140% 130% at 72% 92%,#2f7dff,transparent 55%),
+      linear-gradient(140deg,#17b45c,#0b7d3c)}
+  .paint.blur{filter:blur(19px);transform:scale(1.22)}
+
+  /* protected badge (shared signature) */
+  .shield{position:absolute;top:8px;left:8px;z-index:2;display:inline-flex;align-items:center;gap:5px;
+    font-family:var(--f-mono);font-size:9.5px;font-weight:700;letter-spacing:.04em;
+    padding:3px 8px 3px 6px;border-radius:999px;color:#fff;
+    background:color-mix(in srgb,var(--brand-strong) 90%,#000);
+    box-shadow:0 6px 16px -8px rgba(0,0,0,.6)}
+  .shield::before{content:"✓";font-weight:900}
+
+  /* hero: title rewrite card */
+  .c-hero .demo{align-items:stretch}
+  .yt-panel{width:100%;background:var(--surface-2);border:1px solid var(--line);
+    border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:12px}
+  .yt-big{width:100%}
+  .dur{position:absolute;right:7px;bottom:7px;z-index:2;font-family:var(--f-mono);
+    font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.72);padding:1px 6px;border-radius:4px}
+  .yt-titles{display:flex;flex-direction:column;gap:9px}
+  .yt-line{display:flex;align-items:baseline;gap:8px}
+  .tag{font-family:var(--f-mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    padding:2px 6px;border-radius:5px;flex:none}
+  .tag-bad{color:var(--danger);background:color-mix(in srgb,var(--danger) 16%,transparent)}
+  .tag-ok{color:var(--brand);background:var(--brand-tint)}
+  .spoil{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--danger);
+    text-decoration-thickness:2px;font-size:12.5px;line-height:1.3}
+  .blk{color:transparent;background:var(--danger);border-radius:4px;padding:0 .3em}
+  .clean-title{font-weight:750;font-size:14px;line-height:1.25;letter-spacing:-.01em;color:var(--text)}
+  .yt-arrow{font-family:var(--f-mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;
+    color:var(--brand);padding-left:2px}
+  .yt-chan{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:1px}
+  .ch-dot{width:14px;height:14px;border-radius:50%;flex:none;
+    background:linear-gradient(135deg,var(--brand),var(--brand-strong))}
+
+  /* preview blocked */
+  .prev-wrap{width:100%;position:relative}
+  .prev-wrap .paint{filter:saturate(.68) brightness(.78)}
+  .play{position:absolute;inset:0;margin:auto;width:42px;height:42px;border-radius:50%;
+    background:rgba(0,0,0,.5);display:grid;place-items:center;opacity:.5}
+  .play::before{content:"";width:0;height:0;margin-left:3px;
+    border-style:solid;border-width:8px 0 8px 13px;border-color:transparent transparent transparent #fff}
+  .prev-wrap .strike{position:absolute;left:-6%;right:-6%;top:50%;height:3px;border-radius:3px;
+    background:var(--danger);transform:rotate(-19deg);z-index:3;
+    box-shadow:0 0 0 2px color-mix(in srgb,var(--danger) 22%,transparent)}
+
+  /* descriptions masked */
+  .desc-lines{width:100%;display:flex;flex-direction:column;gap:10px}
+  .dl{font-size:12.5px;color:var(--muted);line-height:1.35}
+  .redbar{height:13px;border-radius:5px;background:var(--danger);width:100%}
+  .redbar.short{width:60%}
+
+  /* shorts */
+  .shrt-frame{width:104px;max-width:60%;margin-inline:auto}
+
+  /* competitions pills */
+  .pills{width:100%;display:flex;flex-wrap:wrap;gap:8px}
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;
+    font-size:12.5px;font-weight:600;border:1px solid var(--line-strong);
+    background:var(--surface-2);color:var(--muted)}
+  .pill .box{width:15px;height:15px;border-radius:5px;flex:none;border:1.5px solid var(--line-strong);
+    display:grid;place-items:center;font-size:10px;font-weight:900;color:transparent}
+  .pill.on{background:var(--brand-tint);color:var(--text);
+    border-color:color-mix(in srgb,var(--brand) 42%,transparent)}
+  .pill.on .box{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
 
   /* ---------- popup panel ---------- */
   .duo{padding:60px 0}
@@ -197,16 +282,28 @@
     .duo-copy p{margin-inline:auto}
     .foot{grid-template-columns:1fr}
     .foot-links{justify-self:start}
+    .bento{grid-template-columns:repeat(2,1fr);
+      grid-template-areas:
+        "hero hero"
+        "blur shrt"
+        "prev shrt"
+        "desc desc"
+        "comp comp";}
   }
   @media (max-width:560px){
     body{font-size:16px}
     .hero{padding:48px 0 6px}
     .shot{margin-top:38px}
-    .points{padding:56px 0 12px}
-    .pt{gap:18px;padding:20px 6px}
-    .pt-ic{width:54px;height:54px;border-radius:15px}
-    .pt-ic img{width:34px;height:34px}
-    .pt p b{font-size:16.5px}
+    .bento-sec{padding:56px 0 12px}
+    .bento{grid-template-columns:1fr;
+      grid-template-areas:
+        "hero"
+        "blur"
+        "prev"
+        "desc"
+        "shrt"
+        "comp";}
+    .shrt-frame{width:128px;max-width:72%}
     .cta-row .btn{width:100%}
     .browser-top .badge{display:none}
   }
@@ -269,20 +366,116 @@
   </div>
 </section>
 
-<!-- ===== 3 points ===== -->
-<section class="points">
-  <div class="wrap points-list">
-    <div class="pt">
-      <span class="pt-ic"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAMAAAD04JH5AAAA/1BMVEUFYCgNmGIHKhoHZUjjX1OsTEQTrHGKODOqVVULcEoMi1oAqqoA/6ttHRv///+uVEgA/39umm6QjWugRDwA/wD/BAT/qlX/rKzp6avDUEh/fwCoclqVPDXlZmZxcXFseVhV//+qqnHMVEkWv4DPg2cAv39xLytNcU9/eVt/v3+xQTsAAAATt3n5aFz+bWAUwoEA//8QqG4TwH7NVkwMiFgAf38AqlX+cGK2TEP/f3/+VVUPo2kKeU8OmGP//3/XWk8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHq4fAAAAAQHRSTlMhoBgr01PnLwNQZwMDHQGNAvz6VgEBAwMEegLTSwUCqQMFm///BEFjzgSAAPz7/v4B0P6bbAID/m4CA7RNlAK0+gj+9QAACXdJREFUeNrtWgl3ozgSFmCTNr7tXD19TPfM7szuChtBwBfg/P9/NXVIGIgPnE7PbN6j3ksssKA+VZXqkoX8h0m0AFoALYAWQAugBdACaAG0AN4pAJGsBkrpC6VUf5X8fQCSlTp6Xw1WfwOApE8fdi/28jQNidI8jzN+kVr9XAD0euHloe9HAVEURQEMfd8PUy8jDMnPAiD6xD31/SDyj1AU+WGOGJTzMwAIVDxwjwL/DAWAAdk7bw4AhG97oV/hHhiqYUh7VyhCNGZvuVGVO2g9j+M4T8OaTgACaEK9HQCUfszsg4OovcOjDsjmwJ0hONpk3wAAvCczDEKXPn4P2eAH/X5/QEuNQ40tNBByu5EQLgNQUljFqu0wwkEM9/tJxTnYOc2xZJYyhAhBJj8MACQZ+6zhENhayD8siTdZsRNe4TwkmORYWlUghP4PAliB8fHykb3mb8tBTUgJGUpGM3sIOyXQQdi7qAZxSfxhZDQqVc9n/iXrEhk54Qn8DWSPBGWjVWRkExEKJHk9AAWvJPGjTYuJJDDiwH/CYg9zQS9iBGAGEwcg5PyodWE3iLNfsfhxGQq54RuzilrTgF1CTgsdyJwhJsjUISEEoagh2O2aAYAX5kaRJEYb9mKQl/WvZK79YJDaMOdW0RyLFE9CoN0gzpmiOMPfYhmyzSkWgCir9BY2X8obH01DwVLJEHkSqI2MInJ7BwRDKefzJgAO/AsdgkRBAC+t2skRAq9boZ0Us5RWA+hNy+1OyufF4qMcXQIgDP+enuJIh9Z2m9TTA5yNbIIYGPZJBCANpoG0yUrgNWbu83Kx6JyTAFrI/oPS/DOzYrqhtVsmm9iQMbo2vS0s84MPK/CLvTOST8B//XRaAr/ozzviD8o7mBzuQa9qTlkauqElcKGhFoFCy42s4rlEIwjRLrZyswD+zzaq4igA4N997nSebjzt1PrFe2y3WKMxQIvCcACwwAMELB82w/SFMUUh8BrJ39aLdafMvwrgTg47C5DRsjNl/oODtjN+SWkLpkVshqXbIYaoiUZaGMHBnCKwzJ3cLNedIUjiOADkD+yJpgHo//vuHmgH9P0efN7v+cMjXcG/RxmXEqHeaGTH3vBht7t7QG24YvdlZ+jLyKa90Nt+eJDz7lDiV/fbIwBGZKKa3LhqHaDJwCtbXzkFSmXNO9ZzQkhnovSSIxrKIXJ+/oyWsvj0v+54M95sut0N0Lj7n+l0Ov44Hm+Ixh9/LSdhLn4zpvnj7gxnbvREnAuzx1O82YXlgxBw1ubmJYCd7KKJwugzIlgyrfUn3TIXMJhVMtF/LQtalx4uiIS6JgPYkJUtFzdsClUAy8V6M9p9kZ3FEVpWrqYVALPqzOXiBK27UpvZekMupwpgoyXwB622SsvqvRcSqM7UIxQIk5bAYgg7EQW5Xnx+IYGvbAPj4byDO/GpSp9ms9mn0nXFBvxxbea49vRvM755Ix/sDd35fHwXrI2kl27NWr3aLpDuuV1Q9/AxBsWL4XgLIjDamwXWzehhb+hxj7lPPhoVNzg6F37ATL0fsR/Yb4tnt4/kHcE/Pz7I4ce5pMnH/ACIYA6KAktczCgQq1JyjMGw7AknOsr4lKVMDp5X1CaCFxU+xyNH2p318knuT0ZDkMFTZ9F5npPrisuxDz1sOR2BWMAFAOZjh3l9lHYlagL/kPO6yS9kZctyMKxHQyMYx/XrCNChx6VoeIvR0HXDNKvmsTAvistRhBJrTlJGNloZ7MDTCckQIYz+q3P8A4IB6hyMrZYP2LaslKGiLqmB5s8yoWgHND/EoyMZ0R1JktI5TMgSo1u3nhJy1lEpxBVp4GACulbAjFFwvB921piR7C/lhEpXWrlJvCj8vswJRf0xk5noy8zw1zA/EILzEqgi0ElxNeE9RWSCsAlNHsnvKPEnO+/OG9UFyjytywJeXHqu2OM9aMQ00IUB1wwvsr7LlZGpNrEw6uPGz/hicOYJ3CouSSnB0ijiUq0qteH9tmFtCBbEaX0qUJ6KXU/vJALFpVzMBYIp6/Pz5enZ4rQvBRd/VB2KwqMNTpaytAUUVYZpIT7x+vJ8pdXoU9tJ7ymQgRLHOxmM79/Y0qLlR6FzqUFwoUEBwuu5XOljDa79P6xqUH0wUaaUzrhjFJktdKlFcrFHpEAN3AglCIwAihGpigZ5sqKmSKSxAXuOUZjXXuyUXW5SYffH5bYTKsLid+smndI9e6HbEbEUwJ6kjyjV5dc3aNMl9H7dfAstlnTkWrF5VsS6Meb2IDzpNAF7ZE0ahY06pWzULIXAPXQkwzTFnn3Rv3RD3VCLQt42b9aqxV6p6f9VG+RARxrWnt2wT9q8WU0tj9wNzvbKNfu4OftrzgsSre0z/XpsYNOJQb/xW686McHNjhhcABEdYa65y6uOba47sqFDE2lnnsVdazqyYfNLc96ZV57YXH9qpk+tpO1kXoxkxV7m6H7A9WdWrzo3FKvBEQc/WDnyNS87fnuidAN4Um5IJybTgrvORKlv376NkB7x3yVO2/d0dAu5UJpaFmYWccpkYb/a0WMrw4BL4/FzU9o0B4ApuG5weuDs6HgSEw07DPAK/iDrygM8NZu+aEWYNoWuzks9ijmkxM0A6AQYs8v84HVcnRDpqM89smln0ZTWXXnf2AaovPFdh6sR39QouRlDns0Y3eYAOkPsVDc1QjvL+CjE9ryMiPZYBhd4zUfIeLvXbUrDV+yCW6xA34zurgKwWvFxmFhpSsxdJH1eBvT1Q1Mavic/gOsDKgaJuSqPBY2+bpvS3RvbgPrJNiAch2OLo0mYu2Zs8/imKV2lAj4uDYVu75gayzLj9HV+4O5aT+hhd9BkPMc94aK5J9S92UaxwMEEOApiPBQg5x9QLHAD/asJ36FY4J+OBUeiw7wxAAyC+POc3FZ2HmrC6jQzFx48aNHoU6cpPb0vPzAxO02V0/Kk9PXVTnr0zjzhPw0ggbpbUVKqDN3qu0gJV+ZAe+Npi9749vB/z9/u+d/7Skp7eZ5b+AOQ2MqZsCkicn3VA2dJ31i/PjWk53lzANgOQ0fke5iU6ho8sDAp5YvAJUcEo+myckK2PuOI3jwpja5NSpu7Yql/OwMO16kkpSYY4a8yuGPnrk+c6v1wUoplp6BqXBMlopm+sIvxn5um9JqUTL0i7XijhOTW5KFJf9UHWvUpEYUPIvTDExp/3zWlYeuKWwAtgBZAC6AF0AJoAbQAWgD/pwD+AglLigHSupzqAAAAAElFTkSuQmCC" width="128" height="128" alt="" aria-hidden="true"></span>
-      <p><b>L'IA lit entre les lignes.</b> <span class="dim">Elle repère les spoils déguisés, pas seulement les mots-clés évidents.</span></p>
+<!-- ===== feature bento ===== -->
+<section class="bento-sec">
+  <div class="wrap">
+    <div class="bento-head">
+      <span class="eyebrow"><span class="dot"></span>Sur chaque page YouTube</span>
+      <h2>Le résultat ne fuit nulle part</h2>
+      <p>Six protections qui travaillent ensemble — titres, vignettes, aperçus, descriptions, Shorts.</p>
     </div>
-    <div class="pt">
-      <span class="pt-ic"><img src="data:image/png;base64,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" width="128" height="128" alt="" aria-hidden="true"></span>
-      <p><b>Des titres réécrits, pas juste floutés.</b> <span class="dim">Tu retrouves ta vidéo sans croiser le vainqueur.</span></p>
-    </div>
-    <div class="pt">
-      <span class="pt-ic"><img src="data:image/png;base64,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" width="128" height="128" alt="" aria-hidden="true"></span>
-      <p><b>Tu choisis tes compétitions.</b> <span class="dim">Tour de France, foot, F1, tennis — coche ce que tu suis.</span></p>
+
+    <div class="bento">
+
+      <!-- HERO : réécriture des titres -->
+      <article class="cell c-hero">
+        <span class="lbl">La star</span>
+        <h3>Réécriture des titres</h3>
+        <div class="demo">
+          <div class="yt-panel">
+            <div class="ratio r169 yt-big">
+              <span class="paint"></span>
+              <span class="shield">Protégé</span>
+              <span class="dur">14:02</span>
+            </div>
+            <div class="yt-titles">
+              <div class="yt-line">
+                <span class="tag tag-bad">avant</span>
+                <s class="spoil"><span class="blk">Pogačar</span> s'impose seul au sommet du Galibier</s>
+              </div>
+              <div class="yt-arrow">↓ réécrit par l'IA</div>
+              <div class="yt-line">
+                <span class="tag tag-ok">après</span>
+                <span class="clean-title">🚴 Tour de France 2026 – Résumé étape 2</span>
+              </div>
+              <div class="yt-chan"><span class="ch-dot"></span>France Vélo · 312 k vues · 2 h</div>
+            </div>
+          </div>
+        </div>
+        <p class="sub">Le vainqueur disparaît du titre. Tu retrouves une vidéo lisible, jamais le résultat.</p>
+      </article>
+
+      <!-- vignettes floutées -->
+      <article class="cell c-blur">
+        <span class="lbl">Vignettes</span>
+        <h3>Miniatures floutées</h3>
+        <div class="demo">
+          <div class="ratio r169">
+            <span class="paint blur"></span>
+            <span class="shield">Protégé</span>
+          </div>
+        </div>
+        <p class="sub">Impossible de deviner le vainqueur sur l'image.</p>
+      </article>
+
+      <!-- preview auto bloquée -->
+      <article class="cell c-prev">
+        <span class="lbl">Survol</span>
+        <h3>Aperçu automatique coupé</h3>
+        <div class="demo">
+          <div class="prev-wrap">
+            <div class="ratio r169">
+              <span class="paint"></span>
+              <span class="play"></span>
+              <span class="strike"></span>
+            </div>
+          </div>
+        </div>
+        <p class="sub">Pas de preview au survol qui vend la mèche.</p>
+      </article>
+
+      <!-- descriptions masquées -->
+      <article class="cell c-desc">
+        <span class="lbl">Descriptions</span>
+        <h3>Descriptions masquées</h3>
+        <div class="demo">
+          <div class="desc-lines">
+            <span class="dl">Retour sur une étape de montagne décisive, avec le classement…</span>
+            <span class="redbar"></span>
+            <span class="redbar short"></span>
+          </div>
+        </div>
+        <p class="sub">La description ne trahit rien non plus.</p>
+      </article>
+
+      <!-- shorts couverts -->
+      <article class="cell c-shrt">
+        <span class="lbl">Format vertical</span>
+        <h3>Shorts couverts</h3>
+        <div class="demo">
+          <div class="ratio r916 shrt-frame">
+            <span class="paint blur"></span>
+            <span class="shield">Protégé</span>
+          </div>
+        </div>
+        <p class="sub">Le format vertical est protégé, lui aussi.</p>
+      </article>
+
+      <!-- compétitions -->
+      <article class="cell c-comp">
+        <span class="lbl">À toi de régler</span>
+        <h3>Tu choisis tes compétitions</h3>
+        <div class="demo">
+          <div class="pills">
+            <span class="pill on"><span class="box">✓</span>🚴 Tour de France</span>
+            <span class="pill on"><span class="box">✓</span>⚽ Coupe du monde</span>
+            <span class="pill"><span class="box"></span>🏎️ F1</span>
+            <span class="pill"><span class="box"></span>🎾 Wimbledon</span>
+          </div>
+        </div>
+        <p class="sub">Coche ce que tu suis. On ne touche à rien d'autre sur YouTube.</p>
+      </article>
+
     </div>
   </div>
 </section>

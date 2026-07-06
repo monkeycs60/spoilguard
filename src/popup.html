@@ -50,9 +50,18 @@
 
       /* Header */
       .head { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
-      .head svg { display: block; flex: none; }
+      .head > svg { display: block; flex: none; }
       .head .name { font-weight: 800; font-size: 16px; letter-spacing: -0.02em; }
       .head .name b { color: var(--brand); font-weight: 800; }
+      .icon-btn {
+        margin-left: auto; flex: none; padding: 0;
+        width: 32px; height: 32px; display: inline-grid; place-items: center;
+        border: 1px solid transparent; border-radius: 9px;
+        background: transparent; color: var(--muted); cursor: pointer;
+        transition: background 0.12s, color 0.12s, border-color 0.12s;
+      }
+      .icon-btn:hover { background: var(--surface-2); color: var(--brand); border-color: var(--line); }
+      .icon-btn svg { display: block; }
 
       /* Protection card */
       .guard {
@@ -118,28 +127,46 @@
       .badge .e { font-size: 13px; }
       .badge.empty { color: var(--muted); font-weight: 500; border-style: dashed; }
 
-      /* Pause button */
-      .pause-btn {
-        width: 100%; margin-top: 14px; font: inherit; font-weight: 700; cursor: pointer;
-        border: 1px solid var(--line-strong); background: var(--surface); color: var(--text);
-        padding: 11px 12px; border-radius: 11px; transition: border-color 0.12s, color 0.12s;
-        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      /* Active badge with hover-to-remove */
+      .badge .rm {
+        display: none; margin: 0 -3px 0 1px; padding: 0 2px; flex: none;
+        border: none; background: transparent; color: var(--muted);
+        font: inherit; font-size: 14px; line-height: 1; cursor: pointer;
       }
-      .pause-btn:hover { border-color: var(--brand); color: var(--brand); }
-      .pause-btn.active {
-        border-color: color-mix(in srgb, var(--danger) 45%, var(--line-strong));
-        background: var(--danger-tint); color: var(--danger);
-      }
-      .pause-btn.active:hover { border-color: var(--danger); }
-      .pause-btn svg { flex: none; }
+      .badge.active-comp:hover .rm { display: inline-flex; }
+      .badge .rm:hover { color: var(--danger); }
 
-      hr { border: none; border-top: 1px solid var(--line); margin: 14px 0 12px; }
-      .foot { display: flex; align-items: center; justify-content: space-between; }
-      a.opt {
-        color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600;
-        display: inline-flex; align-items: center; gap: 5px;
+      /* Quick-add round button */
+      .badge.add {
+        cursor: pointer; border-style: dashed; color: var(--muted);
+        background: transparent; font-weight: 800; font-size: 14px; line-height: 1;
+        padding: 4px 9px; transition: border-color 0.12s, color 0.12s;
       }
-      a.opt:hover { color: var(--brand); }
+      .badge.add:hover, .badge.add.open { border-color: var(--brand); color: var(--brand); }
+
+      /* Inline add panel */
+      .add-panel {
+        margin-top: 10px; border: 1px solid var(--line-strong); border-radius: 12px;
+        background: var(--surface); padding: 8px;
+      }
+      .add-panel[hidden] { display: none; }
+      .ap-title {
+        font-size: 11px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.06em; color: var(--muted); margin: 2px 4px 8px;
+      }
+      .add-list { display: flex; flex-direction: column; gap: 4px; }
+      .add-item {
+        display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+        border: 1px solid transparent; border-radius: 9px; background: var(--surface-2);
+        padding: 7px 9px; font: inherit; font-weight: 600; font-size: 13px;
+        color: var(--text); cursor: pointer; transition: border-color 0.12s, color 0.12s;
+      }
+      .add-item:hover { border-color: var(--brand); color: var(--brand); }
+      .add-item .e { font-size: 15px; flex: none; }
+      .add-empty { color: var(--muted); font-size: 12.5px; padding: 6px 4px; }
+
+      .comps-msg { color: var(--danger); font-size: 12px; margin-top: 8px; }
+      .comps-msg[hidden] { display: none; }
     </style>
   </head>
   <body>
@@ -149,6 +176,12 @@
         <path d="M8.6 14.2l2.9 2.9 5.9-6.6" stroke="var(--brand-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
       <span class="name">Spoil<b>Block</b></span>
+      <button id="settings" class="icon-btn" type="button" data-i18n-aria="settingsAria" aria-label="Paramètres">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+        </svg>
+      </button>
     </div>
 
     <div class="guard" id="guard">
@@ -175,21 +208,11 @@
     <div class="comps">
       <div class="lbl" data-i18n="compsWatched">Compétitions surveillées</div>
       <div class="badges" id="badges"></div>
-    </div>
-
-    <button id="pause" class="pause-btn" type="button">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
-      </svg>
-      <span id="pauseLabel">Tout révéler 10 min</span>
-    </button>
-
-    <hr />
-    <div class="foot">
-      <a id="options" class="opt" href="#">
-        <span data-i18n="settingsLink">Paramètres et compétitions</span>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-      </a>
+      <div class="comps-msg" id="compsMsg" hidden></div>
+      <div class="add-panel" id="addPanel" hidden>
+        <div class="ap-title" data-i18n="addPanelTitle">Ajouter une compétition</div>
+        <div class="add-list" id="addList"></div>
+      </div>
     </div>
 
     <script src="popup.js"></script>

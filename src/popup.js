@@ -1,17 +1,25 @@
-// Popup SpoilGuard — interrupteur global + pause 10 min + compteur du jour + badges.
+// Popup SpoilGuard — interrupteur global + compteur du jour + gestion rapide
+// des compétitions surveillées (badges + panneau « + »).
 // Pur câblage DOM autour de chrome.storage.local. Aucune logique métier :
-// on ne fait que lire/écrire les clés existantes (enabled, pauseUntil,
-// activeCompetitions) plus la lecture du compteur (dailyBlockedCount /
-// dailyBlockedDate) écrit par le content script.
+// on ne fait que lire/écrire les clés existantes (enabled, activeCompetitions)
+// plus la lecture du compteur (dailyBlockedCount / dailyBlockedDate) écrit par
+// le content script.
+//
+// NOTE : la fonctionnalité UI « Tout révéler 10 min » a été retirée
+// volontairement (décision produit). La logique gate.js/pauseUntil du content
+// script reste en place mais dormante — plus aucune UI n'écrit `pauseUntil`.
 
 import { PACKS } from './lib/pack.js';
+import { loadCompetitions } from './lib/catalog.js';
 import { t, applyI18n } from './lib/i18n.js';
 
-const PAUSE_MS = 10 * 60 * 1000;
 const DEFAULT_COMPETITIONS = ['tdf-2026'];
 const $ = (id) => document.getElementById(id);
 
-let tick = null;
+let active = new Set(DEFAULT_COMPETITIONS); // toujours ≥1 dans l'UI
+let catalog = []; // [{ id, label, emoji, active }]
+let panelOpen = false;
+let msgTimer = null;
 
 function storageGet(keys) {
   return new Promise((resolve) => {
@@ -62,62 +70,132 @@ function renderEnabled(enabled) {
   $('guardLabel').textContent = enabled ? t('guardOn') : t('guardOff');
 }
 
-function renderBadges(activeCompetitions) {
-  const ids =
-    Array.isArray(activeCompetitions) && activeCompetitions.length
-      ? activeCompetitions
-      : DEFAULT_COMPETITIONS;
+// Infos d'affichage d'une compétition : catalogue backend en priorité, repli
+// sur les packs locaux (labels/emojis) si l'id n'y figure pas encore.
+function compInfo(id) {
+  const c = catalog.find((x) => x.id === id);
+  if (c) return { id, label: c.label || id, emoji: c.emoji || '🛡️' };
+  const p = PACKS[id];
+  return { id, label: (p && p.label) || id, emoji: (p && p.emoji) || '🛡️' };
+}
+
+function renderBadges() {
   const el = $('badges');
   el.textContent = '';
-  const known = ids.map((id) => PACKS[id]).filter(Boolean);
-  if (!known.length) {
-    const empty = document.createElement('span');
-    empty.className = 'badge empty';
-    empty.textContent = t('noCompetition');
-    el.append(empty);
-    return;
-  }
-  for (const pack of known) {
+  const ids = active.size ? [...active] : DEFAULT_COMPETITIONS;
+
+  for (const id of ids) {
+    const info = compInfo(id);
     const b = document.createElement('span');
-    b.className = 'badge';
+    b.className = 'badge active-comp';
+
     const e = document.createElement('span');
     e.className = 'e';
-    e.textContent = pack.emoji || '🛡️';
-    const t = document.createElement('span');
-    t.textContent = pack.label || pack.id;
-    b.append(e, t);
+    e.textContent = info.emoji;
+
+    const label = document.createElement('span');
+    label.textContent = info.label;
+
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'rm';
+    rm.textContent = '×';
+    rm.setAttribute('aria-label', t('removeCompetitionAria', { label: info.label }));
+    rm.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      deactivate(id);
+    });
+
+    b.append(e, label, rm);
     el.append(b);
   }
+
+  // Bouton « + » d'ajout rapide.
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'badge add' + (panelOpen ? ' open' : '');
+  add.textContent = '+';
+  add.setAttribute('aria-label', t('addCompetition'));
+  add.addEventListener('click', togglePanel);
+  el.append(add);
 }
 
-function renderPause(pauseUntil) {
-  const btn = $('pause');
-  const label = $('pauseLabel');
-  const remaining = typeof pauseUntil === 'number' ? pauseUntil - Date.now() : 0;
-  if (remaining > 0) {
-    const totalSec = Math.ceil(remaining / 1000);
-    const m = Math.floor(totalSec / 60);
-    const s = String(totalSec % 60).padStart(2, '0');
-    btn.classList.add('active');
-    label.textContent = t('revealedRemaining', { time: `${m}:${s}` });
-  } else {
-    btn.classList.remove('active');
-    label.textContent = t('revealAll');
-    if (tick) {
-      clearInterval(tick);
-      tick = null;
-    }
+function renderPanel() {
+  const list = $('addList');
+  list.textContent = '';
+  // Compétitions du catalogue disponibles (in-season) et pas déjà actives.
+  const available = catalog.filter((c) => c.active !== false && !active.has(c.id));
+
+  if (!available.length) {
+    const p = document.createElement('div');
+    p.className = 'add-empty';
+    p.textContent = t('allCompetitionsActive');
+    list.append(p);
+    return;
+  }
+
+  for (const c of available) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'add-item';
+
+    const e = document.createElement('span');
+    e.className = 'e';
+    e.textContent = c.emoji || '🛡️';
+
+    const label = document.createElement('span');
+    label.textContent = c.label || c.id;
+
+    item.append(e, label);
+    item.addEventListener('click', () => activate(c.id));
+    list.append(item);
   }
 }
 
-// Rafraîchit le compte à rebours chaque seconde tant que la pause est active.
-function startCountdown(pauseUntil) {
-  if (tick) clearInterval(tick);
-  tick = null;
-  renderPause(pauseUntil);
-  if (typeof pauseUntil === 'number' && pauseUntil - Date.now() > 0) {
-    tick = setInterval(() => renderPause(pauseUntil), 1000);
+function togglePanel() {
+  panelOpen = !panelOpen;
+  $('addPanel').hidden = !panelOpen;
+  if (panelOpen) renderPanel();
+  renderBadges(); // refléter l'état « open » sur le bouton +
+}
+
+function showMsg() {
+  const m = $('compsMsg');
+  m.textContent = t('lastCompetitionMsg');
+  m.hidden = false;
+  if (msgTimer) clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => {
+    m.hidden = true;
+  }, 2500);
+}
+
+function hideMsg() {
+  $('compsMsg').hidden = true;
+  if (msgTimer) {
+    clearTimeout(msgTimer);
+    msgTimer = null;
   }
+}
+
+async function activate(id) {
+  active.add(id);
+  hideMsg();
+  await storageSet({ activeCompetitions: [...active] });
+  renderBadges();
+  renderPanel();
+}
+
+async function deactivate(id) {
+  // Garde-fou : au moins une compétition doit rester active.
+  if (active.size <= 1) {
+    showMsg();
+    return;
+  }
+  active.delete(id);
+  hideMsg();
+  await storageSet({ activeCompetitions: [...active] });
+  renderBadges();
+  if (panelOpen) renderPanel();
 }
 
 async function init() {
@@ -125,16 +203,21 @@ async function init() {
 
   const store = await storageGet([
     'enabled',
-    'pauseUntil',
     'activeCompetitions',
+    'backendUrl',
     'dailyBlockedCount',
     'dailyBlockedDate',
   ]);
 
+  active = new Set(
+    Array.isArray(store.activeCompetitions) && store.activeCompetitions.length
+      ? store.activeCompetitions
+      : DEFAULT_COMPETITIONS,
+  );
+
   renderEnabled(store.enabled !== false); // défaut : activé
   renderCount(store);
-  renderBadges(store.activeCompetitions);
-  startCountdown(store.pauseUntil);
+  renderBadges();
 
   $('enabled').addEventListener('change', () => {
     const on = $('enabled').checked;
@@ -142,14 +225,7 @@ async function init() {
     storageSet({ enabled: on });
   });
 
-  $('pause').addEventListener('click', async () => {
-    const pauseUntil = Date.now() + PAUSE_MS;
-    await storageSet({ pauseUntil });
-    startCountdown(pauseUntil);
-  });
-
-  $('options').addEventListener('click', (e) => {
-    e.preventDefault();
+  $('settings').addEventListener('click', () => {
     try {
       if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
       else window.open(chrome.runtime.getURL('dist/options.html'));
@@ -158,17 +234,27 @@ async function init() {
     }
   });
 
-  // Mise à jour en direct si le compteur / la pause changent pendant que le
-  // popup est ouvert (écritures faites par le content script).
+  // Charge le catalogue (backend → repli packs locaux) pour le panneau « + »
+  // et pour des labels à jour ; puis rafraîchit l'affichage.
+  catalog = await loadCompetitions(store.backendUrl);
+  renderBadges();
+  if (panelOpen) renderPanel();
+
+  // Mise à jour en direct si le compteur ou les compétitions changent pendant
+  // que le popup est ouvert (écritures faites par le content script / options).
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'local') return;
       if ('dailyBlockedCount' in changes || 'dailyBlockedDate' in changes) {
         storageGet(['dailyBlockedCount', 'dailyBlockedDate']).then(renderCount);
       }
-      if ('pauseUntil' in changes) startCountdown(changes.pauseUntil.newValue);
       if ('activeCompetitions' in changes) {
-        renderBadges(changes.activeCompetitions.newValue);
+        const next = changes.activeCompetitions.newValue;
+        active = new Set(
+          Array.isArray(next) && next.length ? next : DEFAULT_COMPETITIONS,
+        );
+        renderBadges();
+        if (panelOpen) renderPanel();
       }
       if ('enabled' in changes) renderEnabled(changes.enabled.newValue !== false);
     });

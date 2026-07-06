@@ -1,13 +1,15 @@
 // Page options SpoilGuard — pur câblage DOM autour de chrome.storage.local.
 // Source des compétitions : GET ${backendUrl}/competitions ; fallback = packs locaux
-// (src/lib/pack.js) si le backend est injoignable.
+// (src/lib/pack.js) si le backend est injoignable — factorisé dans lib/catalog.js.
+//
+// NOTE : la section UI « Révéler tout pendant 10 min » a été retirée
+// volontairement (décision produit). La logique gate.js/pauseUntil du content
+// script reste en place mais dormante — plus aucune UI n'écrit `pauseUntil`.
 
-import { PACKS } from './lib/pack.js';
 import { t, applyI18n } from './lib/i18n.js';
+import { loadCompetitions, resolveBase } from './lib/catalog.js';
 
-const DEFAULT_BACKEND = 'https://spoilblock.com';
 const DEFAULT_COMPETITIONS = ['tdf-2026'];
-const PAUSE_MS = 10 * 60 * 1000;
 
 const $ = (id) => document.getElementById(id);
 const compsEl = $('competitions');
@@ -38,37 +40,6 @@ function storageSet(obj) {
       resolve();
     }
   });
-}
-
-// Packs locaux formatés comme la réponse backend (fallback offline).
-function localCompetitions() {
-  return Object.values(PACKS).map((p) => ({
-    id: p.id,
-    label: p.label,
-    emoji: p.emoji,
-    active: true,
-  }));
-}
-
-function resolveBase(backendUrl) {
-  return (backendUrl || DEFAULT_BACKEND).replace(/\/+$/, '');
-}
-
-async function loadCompetitions(backendUrl) {
-  const base = resolveBase(backendUrl);
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 4000);
-    const res = await fetch(base + '/competitions', { signal: ctrl.signal });
-    clearTimeout(t);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    const list = Array.isArray(data && data.competitions) ? data.competitions : [];
-    if (!list.length) throw new Error('vide');
-    return list;
-  } catch {
-    return localCompetitions();
-  }
 }
 
 // Teste la disponibilité du backend via GET /health et met à jour la pastille.
@@ -146,28 +117,10 @@ async function toggleComp(id, on) {
   setStatus(t('saved'));
 }
 
-function refreshPauseState(pauseUntil) {
-  const pill = $('pauseState');
-  const text = $('pauseStateText');
-  const remaining = typeof pauseUntil === 'number' ? pauseUntil - Date.now() : 0;
-  if (remaining > 0) {
-    pill.className = 'status-pill online';
-    pill.style.display = '';
-    text.textContent = t('revealedRemainingMin', { n: Math.ceil(remaining / 60000) });
-  } else {
-    pill.style.display = 'none';
-    text.textContent = '';
-  }
-}
-
 async function init() {
   applyI18n();
 
-  const store = await storageGet([
-    'activeCompetitions',
-    'backendUrl',
-    'pauseUntil',
-  ]);
+  const store = await storageGet(['activeCompetitions', 'backendUrl']);
 
   active = new Set(
     Array.isArray(store.activeCompetitions) && store.activeCompetitions.length
@@ -184,15 +137,6 @@ async function init() {
     checkBackend(v);
     renderCompetitions(await loadCompetitions(v));
   });
-
-  $('reveal').addEventListener('click', async () => {
-    const pauseUntil = Date.now() + PAUSE_MS;
-    await storageSet({ pauseUntil });
-    refreshPauseState(pauseUntil);
-    setStatus(t('revealActivated'));
-  });
-
-  refreshPauseState(store.pauseUntil);
 
   checkBackend(store.backendUrl);
 

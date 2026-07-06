@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { DICTIONARY, t } from '../src/lib/i18n.js';
 
 // Parité des clés entre locales : chaque clé présente en fr doit exister en en
@@ -33,8 +33,7 @@ describe('i18n extension (src/lib/i18n.js) — parité fr/en', () => {
 
   it('t() interpole les placeholders', () => {
     // Locale résolue via navigator/chrome (absents en node) → défaut en.
-    expect(t('revealedRemaining', { time: '9:59' })).toContain('9:59');
-    expect(t('revealedRemainingMin', { n: 3 })).toContain('3');
+    expect(t('removeCompetitionAria', { label: 'Wimbledon' })).toContain('Wimbledon');
   });
 
   it('t() retombe sur la clé si absente', () => {
@@ -44,11 +43,12 @@ describe('i18n extension (src/lib/i18n.js) — parité fr/en', () => {
 
 // Le companion (backend/public/index.html) embarque son dico I18N inline.
 // On l'extrait par regex et on vérifie la même parité fr/en.
-describe('i18n companion (backend/public/index.html) — parité fr/en', () => {
-  const html = readFileSync(
-    new URL('../backend/public/index.html', import.meta.url),
-    'utf8',
-  );
+// Le companion a été retiré du repo (commit « retrait companion ») : si le
+// fichier est absent, on saute ce bloc plutôt que de faire échouer la suite.
+const companionUrl = new URL('../backend/public/index.html', import.meta.url);
+const companionExists = existsSync(companionUrl);
+describe.skipIf(!companionExists)('i18n companion (backend/public/index.html) — parité fr/en', () => {
+  const html = companionExists ? readFileSync(companionUrl, 'utf8') : '';
   const m = html.match(/var I18N = (\{[\s\S]*?\n {4}\});/);
 
   it('bloc I18N trouvé dans le HTML', () => {
