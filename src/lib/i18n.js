@@ -23,7 +23,7 @@ const DICT = {
     settingsLink: 'Paramètres et compétitions',
 
     // — Options —
-    optionsTitle: 'SpoilGuard — Options',
+    optionsTitle: 'SpoilBlock — Options',
     optionsSubtitle: 'Choisissez les compétitions à protéger des spoilers sur YouTube.',
     secCompetitions: 'Compétitions',
     secCompetitionsDesc: 'Activez les compétitions dont vous voulez masquer les résultats.',
@@ -61,7 +61,7 @@ const DICT = {
     settingsLink: 'Settings & competitions',
 
     // — Options —
-    optionsTitle: 'SpoilGuard — Options',
+    optionsTitle: 'SpoilBlock — Options',
     optionsSubtitle: 'Choose which competitions to protect from spoilers on YouTube.',
     secCompetitions: 'Competitions',
     secCompetitionsDesc: 'Turn on the competitions whose results you want to hide.',

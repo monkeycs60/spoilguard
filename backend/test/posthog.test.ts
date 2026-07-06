@@ -39,9 +39,9 @@ describe('posthog — no-op sans clé', () => {
     expect(() => captureServerEvent('classify_batch', BACKEND_DISTINCT_ID, { hits: 1 })).not.toThrow();
   });
 
-  it('aiTracingOptions porte toujours product:spoilguard', () => {
+  it('aiTracingOptions porte toujours product:spoilblock', () => {
     const opts = aiTracingOptions({ properties: { batch_size: 3 } });
-    expect(opts.posthogProperties).toMatchObject({ product: 'spoilguard', batch_size: 3 });
+    expect(opts.posthogProperties).toMatchObject({ product: 'spoilblock', batch_size: 3 });
     expect(opts.posthogDistinctId).toBe(BACKEND_DISTINCT_ID);
   });
 
@@ -55,7 +55,7 @@ describe('posthog — no-op sans clé', () => {
 });
 
 describe('posthog — avec client mocké', () => {
-  it('captureServerEvent envoie product:spoilguard + props', () => {
+  it('captureServerEvent envoie product:spoilblock + props', () => {
     const client = fakeClient();
     setPostHogClient(client as never);
     captureServerEvent('feed_served', BACKEND_DISTINCT_ID, { competitionId: 'tdf-2026', videos: 5, spoilers: 2 });
@@ -63,7 +63,7 @@ describe('posthog — avec client mocké', () => {
     const arg = client.capture.mock.calls[0][0];
     expect(arg.event).toBe('feed_served');
     expect(arg.properties).toMatchObject({
-      product: 'spoilguard',
+      product: 'spoilblock',
       competitionId: 'tdf-2026',
       videos: 5,
       spoilers: 2,
@@ -128,7 +128,7 @@ describe('routes — events produit sans fuite de titre', () => {
     const batchCall = client.capture.mock.calls.find((c) => c[0].event === 'classify_batch');
     expect(batchCall).toBeDefined();
     expect(batchCall![0].properties).toMatchObject({
-      product: 'spoilguard',
+      product: 'spoilblock',
       source: 'extension',
       competitions: ['tdf-2026'],
       misses: 1,
@@ -154,6 +154,6 @@ describe('routes — events produit sans fuite de titre', () => {
     expect(events).toContain('classify_batch');
     expect(events).toContain('feed_served');
     const feedServed = client.capture.mock.calls.find((c) => c[0].event === 'feed_served');
-    expect(feedServed![0].properties).toMatchObject({ product: 'spoilguard', competitionId: 'tdf-2026' });
+    expect(feedServed![0].properties).toMatchObject({ product: 'spoilblock', competitionId: 'tdf-2026' });
   });
 });

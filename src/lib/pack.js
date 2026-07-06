@@ -178,7 +178,7 @@ export function mergePacks(ids) {
     return {
       id: '_empty',
       emoji: '🛡️',
-      label: 'SpoilGuard',
+      label: 'SpoilBlock',
       maxAgeHours: 72,
       channels: [],
       lexicon: [],

@@ -9,7 +9,7 @@
 //     `captureServerEvent`.
 //
 // Projet PostHog EU PARTAGÉ entre plusieurs produits : on distingue SpoilGuard
-// via la super-property `product: 'spoilguard'` attachée à TOUS les events.
+// via la super-property `product: 'spoilblock'` attachée à TOUS les events.
 //
 // PRIVACY : aucun événement ne contient de titre complet — compteurs et
 // métadonnées (ids de compétition, tailles de batch) uniquement.
@@ -29,7 +29,7 @@ export type PostHogConfig = {
 
 /** Tags attachés à CHAQUE event backend (super-properties). */
 const BASE_PROPERTIES = {
-  product: 'spoilguard',
+  product: 'spoilblock',
 } as const;
 
 const DEFAULT_HOST = 'https://eu.i.posthog.com';
@@ -38,7 +38,7 @@ const DEFAULT_HOST = 'https://eu.i.posthog.com';
  * distinct_id stable pour les appels système (pas d'utilisateur authentifié).
  * Regroupe les traces backend ensemble.
  */
-export const BACKEND_DISTINCT_ID = 'spoilguard-backend';
+export const BACKEND_DISTINCT_ID = 'spoilblock-backend';
 
 let client: PostHog | null = null;
 let initialized = false;

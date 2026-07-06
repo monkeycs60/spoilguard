@@ -4,7 +4,7 @@
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createClassifyRoute, type ClassifyRouteDeps } from './routes/classify';
@@ -91,12 +91,15 @@ export function createApp(deps: AppDeps) {
     })
   );
 
-  // Landing marketing servie sur /landing. Deux emplacements possibles :
+  // Routage public (spoilblock.com) : la LANDING marketing vit à la RACINE `/`
+  // (vitrine d'abord), la companion « feed sans spoiler » vit sur `/app`.
+  // `/landing` est conservé en redirection permanente (anciens liens).
+  //
+  // Landing : deux emplacements possibles —
   // - repo complet (dev local) : spoilguard/landing/index.html (source de vérité) ;
-  // - conteneur Coolify (Base Directory /backend) : le repo au-dessus n'existe PAS →
-  //   repli sur la copie committée backend/public/landing/index.html (synchro via
-  //   `npm run sync-landing` à la racine). Cache mémoire 5 min.
-  // Enregistré AVANT le static '/*' : Hono compose dans l'ordre, /landing gagne.
+  // - conteneur Coolify (Base Directory /backend) : repli sur la copie committée
+  //   backend/public/landing/index.html (synchro via `npm run sync-landing`).
+  // Cache mémoire 5 min.
   const srcDir = path.dirname(fileURLToPath(import.meta.url));
   const landingCandidates = [
     path.resolve(srcDir, '../../landing/index.html'),
@@ -104,7 +107,7 @@ export function createApp(deps: AppDeps) {
   ];
   const LANDING_TTL_MS = 5 * 60 * 1000;
   let landingCache: { html: string; expires: number } | null = null;
-  app.get('/landing', async (c) => {
+  const serveLanding = async (c: Context) => {
     const now = Date.now();
     if (!landingCache || landingCache.expires <= now) {
       let html: string | null = null;
@@ -123,22 +126,20 @@ export function createApp(deps: AppDeps) {
       landingCache = { html, expires: now + LANDING_TTL_MS };
     }
     return c.html(landingCache.html);
-  });
+  };
+  app.get('/', serveLanding);
+  app.get('/landing', (c) => c.redirect('/', 301));
 
-  // Companion web app (Phase 3) : servie en statique sur / depuis backend/public/.
-  // Enregistré APRÈS les routes API : leurs handlers répondent avant ce middleware
-  // (Hono compose les handlers dans l'ordre d'enregistrement).
-  //
-  // serveStatic (@hono/node-server) résout `root`/`path` relativement au cwd du
-  // process. Or le serveur peut être lancé depuis n'importe quel dossier. On calcule
-  // donc le chemin ABSOLU de public/ à partir de ce fichier source (import.meta.url),
-  // puis on le convertit en chemin RELATIF au cwd réel (ce que serveStatic attend) —
-  // ainsi GET / sert le HTML quel que soit le dossier de lancement.
+  // Companion web app : servie sur /app depuis backend/public/.
+  // serveStatic (@hono/node-server) résout `root` relativement au cwd ; on calcule
+  // le chemin ABSOLU de public/ depuis ce fichier source puis on le convertit en
+  // RELATIF au cwd réel — GET /app sert le HTML quel que soit le dossier de lancement.
   const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
   const publicRoot = path.relative(process.cwd(), publicDir) || '.';
-  app.use('/*', serveStatic({ root: publicRoot, index: 'index.html' }));
-  // Fallback SPA : tout chemin non résolu retombe sur index.html.
-  app.get('*', serveStatic({ path: `${publicRoot}/index.html` }));
+  app.get('/app', serveStatic({ path: `${publicRoot}/index.html` }));
+  app.use('/app/*', serveStatic({ root: publicRoot, rewriteRequestPath: (p) => p.replace(/^\/app/, '') }));
+  // Autres assets statiques éventuels (hors /app) restent servis depuis public/.
+  app.use('/*', serveStatic({ root: publicRoot }));
 
   return app;
 }

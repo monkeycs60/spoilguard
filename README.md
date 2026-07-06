@@ -1,6 +1,8 @@
-# SpoilGuard
+# SpoilBlock
 
-Extension Chrome (Manifest V3) qui masque instantanément les spoilers de résultats sportifs sur YouTube — Tour de France, Wimbledon, Formule 1.
+Extension Chrome (Manifest V3) qui masque instantanément les spoilers de résultats sportifs sur YouTube — Tour de France, Wimbledon, Formule 1. Domaine cible : **spoilblock.com**.
+
+> **Note de nommage** — Le produit s'appelle désormais SpoilBlock, mais les identifiants internes conservent le préfixe historique `spoilguard` (classes CSS `.spoilguard-*`, attributs `data-spoilguard*`, noms de variables/fonctions, chemins de fichiers, nom du dossier). Ils n'ont aucune valeur utilisateur et sont laissés tels quels pour éviter toute régression.
 
 Deux couches : un **pré-filtre local** voile avant le premier paint (chaînes à risque + lexique), puis le **backend IA** (Hono + Cerebras gpt-oss-120b sur VPS, cache partagé par compétition) réécrit les titres proprement (« 🚴 Tour de France 2026 – Résumé étape 2 ») et dé-voile les faux positifs. Miniatures floutées, descriptions et chips « Résumé » IA masqués, `aria-label` neutralisés, titre principal des pages /watch couvert. Vérifié sur YouTube réel (juillet 2026, pendant le Tour).
 

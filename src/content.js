@@ -293,7 +293,7 @@ function veil(card, info) {
   titleEl.setAttribute('aria-label', safe);
   titleEl.textContent = safe;
   titleEl.classList.add('spoilguard-safe-title');
-  titleEl.title = 'SpoilGuard — double-clic pour révéler';
+  titleEl.title = 'SpoilBlock — double-clic pour révéler';
   // safeTitle : sert de marqueur « notre voile » et de signature pour distinguer NOTRE
   // écriture (à ignorer) d'un vrai changement de titre par YouTube (recyclage → retraiter).
   // age : âge utilisé pour la décision → détecte l'arrivée tardive d'un âge réel différent.
@@ -701,4 +701,4 @@ try {
   /* contexte d'extension indisponible → on reste sur les défauts */
 }
 
-console.log('[SpoilGuard] actif —', state.merged.label);
+console.log('[SpoilBlock] actif —', state.merged.label);

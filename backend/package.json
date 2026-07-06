@@ -1,9 +1,9 @@
 {
-  "name": "spoilguard-backend",
+  "name": "spoilblock-backend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "SpoilGuard backend — classification anti-spoil de titres YouTube (Hono + Vercel AI SDK + Cerebras)",
+  "description": "SpoilBlock backend — classification anti-spoil de titres YouTube (Hono + Vercel AI SDK + Cerebras)",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",

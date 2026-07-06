@@ -36,7 +36,7 @@ serve(
     hostname: '0.0.0.0',
   },
   (info) => {
-    console.log(`spoilguard-backend en écoute sur http://0.0.0.0:${info.port}`);
+    console.log(`spoilblock-backend en écoute sur http://0.0.0.0:${info.port}`);
   }
 );
 
