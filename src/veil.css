@@ -10,7 +10,7 @@
 .spoilguard-veiled img,
 .spoilguard-veiled ytd-thumbnail,
 .spoilguard-veiled yt-thumbnail-view-model {
-  filter: blur(16px) !important;
+  filter: blur(40px) saturate(0.55) contrast(0.9) !important; transform: scale(1.12); /* blur fort + désaturation : un casque/maillot reconnaissable à 16px devient une tache ; scale masque les bords nets que le blur laisse dépasser */
 }
 /* Coupe le preview vidéo au survol (spoil aussi) */
 .spoilguard-veiled ytd-thumbnail-overlay-inline-playback-renderer,
@@ -31,7 +31,7 @@
 .spoilguard-softveil img,
 .spoilguard-softveil ytd-thumbnail,
 .spoilguard-softveil yt-thumbnail-view-model {
-  filter: blur(16px) !important;
+  filter: blur(40px) saturate(0.55) contrast(0.9) !important; transform: scale(1.12); /* blur fort + désaturation : un casque/maillot reconnaissable à 16px devient une tache ; scale masque les bords nets que le blur laisse dépasser */
 }
 .spoilguard-softveil ytd-thumbnail-overlay-inline-playback-renderer,
 .spoilguard-softveil video { display: none !important; }
@@ -67,7 +67,7 @@ ytd-video-preview.spoilguard-preview-blocked video { display: none !important; }
 .spoilguard-ad-veiled img,
 .spoilguard-ad-veiled ytd-thumbnail,
 .spoilguard-ad-veiled yt-thumbnail-view-model {
-  filter: blur(16px) !important;
+  filter: blur(40px) saturate(0.55) contrast(0.9) !important; transform: scale(1.12); /* blur fort + désaturation : un casque/maillot reconnaissable à 16px devient une tache ; scale masque les bords nets que le blur laisse dépasser */
 }
 .spoilguard-ad-veiled ytd-thumbnail-overlay-inline-playback-renderer,
 .spoilguard-ad-veiled video { display: none !important; }
